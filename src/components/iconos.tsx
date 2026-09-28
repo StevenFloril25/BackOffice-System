@@ -1,7 +1,11 @@
 import {
+  BedDouble,
   Church,
+  Flag,
+  HeartHandshake,
   History,
   IdCard,
+  Package,
   ScanLine,
   LayoutDashboard,
   ShieldCheck,
@@ -24,6 +28,10 @@ const ICONOS = {
   "id-card": IdCard,
   "scan-line": ScanLine,
   church: Church,
+  "heart-handshake": HeartHandshake,
+  flag: Flag,
+  "bed-double": BedDouble,
+  package: Package,
 } satisfies Record<string, LucideIcon>;
 
 export type NombreIcono = keyof typeof ICONOS;

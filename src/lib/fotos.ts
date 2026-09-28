@@ -16,7 +16,7 @@ const DURACION_URL = 60 * 60;
 const TIPOS: Record<string, string> = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" };
 const MAXIMO = 2 * 1024 * 1024;
 
-export type CarpetaFoto = "usuarios" | "participantes";
+export type CarpetaFoto = "usuarios" | "participantes" | "consejeros";
 
 /** URL firmada de una foto, o null si no hay. */
 export async function urlFoto(path: string | null | undefined): Promise<string | null> {

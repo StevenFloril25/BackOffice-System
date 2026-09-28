@@ -17,6 +17,7 @@ export interface Persona {
   preferido: string;
   barrio: string;
   asistio_at: string | null;
+  talla: string | null;
 }
 
 type Escaner = {
@@ -189,7 +190,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
           apellidos: "",
           nombre_preferido: p.preferido,
           sexo: null,
-          talla_camiseta: null,
+          talla_camiseta: p.talla,
           asistio_at: hora,
           registrado_por: null,
           barrio: p.barrio,
@@ -353,6 +354,12 @@ export function AvisoLectura({ resultado }: { resultado: ResultadoLectura }) {
         <>
           <span className="block text-base font-semibold text-slate-800">{`${p.nombres} ${p.apellidos}`.trim()}</span>
           {p.barrio && <span className="block">{p.barrio}</span>}
+          {!ya && (
+            // El kit se marca solo con la llegada: la talla dice qué camiseta entregar.
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-hoja-100 px-3 py-1 text-sm font-semibold text-hoja-700">
+              Kit entregado{p.talla_camiseta && ` · talla ${p.talla_camiseta.replace(" (unisex)", "")}`}
+            </span>
+          )}
           {ya && p.asistio_at && (
             <span className="mt-2 block text-xs font-medium text-sol-600">
               Llegó <Fecha iso={p.asistio_at} relativa />

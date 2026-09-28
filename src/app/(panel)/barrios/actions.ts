@@ -83,9 +83,14 @@ export async function eliminarBarrio(id: string): Promise<EstadoBarrio> {
   const supabase = await createClient();
   const { count } = await supabase.from("participantes").select("id", { count: "exact", head: true }).eq("barrio_id", id);
   if (count) return { error: `Tiene ${count} participante(s). Cámbialos de barrio antes de eliminarlo.` };
+  // Con la sesión del usuario, sin consejeros.ver esto da 0: la llave restrict igual lo frena abajo.
+  const { count: consejeros } = await supabase.from("consejeros").select("id", { count: "exact", head: true }).eq("barrio_id", id);
+  if (consejeros) return { error: `Tiene ${consejeros} consejero(s). Cámbialos de barrio antes de eliminarlo.` };
 
   const { data, error } = await supabase.from("barrios").delete().eq("id", id).select("nombre").maybeSingle();
-  if (error) return { error: "No se pudo eliminar el barrio." };
+  if (error) {
+    return { error: error.code === "23503" ? "Todavía tiene personas registradas en este barrio." : "No se pudo eliminar el barrio." };
+  }
   if (!data) return { error: "El barrio no existe o no tienes permiso." };
 
   await registrarAuditoria(permiso.sesion, {

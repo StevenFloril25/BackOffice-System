@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AvisoBreve, Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
 import { EncabezadoPagina, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { urlFoto } from "@/lib/fotos";
+import { nombreCompania } from "@/lib/organizacion-comun";
 import { qrSvg, urlAsistencia } from "@/lib/qr";
 import { CAMPOS_SALUD, edad, listarBarriosOpciones, nombreCompleto, obtenerParticipante } from "@/lib/participantes";
 import { exigirSesion, puede } from "@/lib/sesion";
@@ -112,10 +114,35 @@ export default async function FichaParticipante({
           <Asistencia
             id={p.id}
             nombre={nombreCompleto(p)}
+            talla={p.talla_camiseta}
             asistioAt={p.asistio_at}
             registradoPor={registradoPor}
             puedeRegistrar={puede(sesion, "asistencia.registrar")}
           />
+
+          <Tarjeta>
+            <EncabezadoTarjeta titulo="Compañía y habitación" descripcion="Se asignan desde Compañías y Habitaciones." />
+            <dl className="divide-y divide-slate-100 text-sm">
+              <Dato etiqueta="Compañía">
+                {p.compania ? (
+                  <Link href={`/companias/${p.compania.id}`} className="text-marca-700 hover:text-marca-900">
+                    {nombreCompania(p.compania)}
+                  </Link>
+                ) : (
+                  <span className="text-slate-400">Sin compañía</span>
+                )}
+              </Dato>
+              <Dato etiqueta="Duerme en">
+                {p.habitacion ? (
+                  <Link href={`/habitaciones/${p.habitacion.id}`} className="text-marca-700 hover:text-marca-900">
+                    {p.habitacion.edificio?.nombre} · piso {p.habitacion.piso}
+                  </Link>
+                ) : (
+                  <span className="text-slate-400">Sin cama</span>
+                )}
+              </Dato>
+            </dl>
+          </Tarjeta>
 
           <QrParticipante
             id={p.id}

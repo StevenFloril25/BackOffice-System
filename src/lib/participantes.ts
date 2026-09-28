@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export * from "@/lib/participantes-comun";
 
-const COLUMNAS = "*, barrio:barrios(id, nombre, estaca)";
+const COLUMNAS =
+  "*, barrio:barrios(id, nombre, estaca), compania:companias(id, numero, nombre), habitacion:habitaciones(id, nombre, piso, tipo, edificio:edificios(id, nombre, sexo))";
 
 export async function listarParticipantes(): Promise<Participante[]> {
   const supabase = await createClient();

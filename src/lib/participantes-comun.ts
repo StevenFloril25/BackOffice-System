@@ -1,5 +1,7 @@
 /** Tipos y utilidades de participantes que usan tanto el servidor como el navegador. */
 
+import type { CompaniaResumen, HabitacionResumen } from "@/lib/organizacion-comun";
+
 export const TALLAS = ["XS (unisex)", "S (unisex)", "M (unisex)", "L (unisex)", "XL (unisex)", "2XL (unisex)"];
 
 export interface BarrioResumen {
@@ -32,9 +34,15 @@ export interface Participante {
   qr_token: string;
   asistio_at: string | null;
   asistencia_por: string | null;
+  /** Se marca solo al registrar la llegada (ver 0008). */
+  kit_entregado_at: string | null;
+  compania_id: string | null;
+  habitacion_id: string | null;
   origen: "manual" | "importacion";
   created_at: string;
   barrio: BarrioResumen | null;
+  compania: CompaniaResumen | null;
+  habitacion: HabitacionResumen | null;
 }
 
 export interface Salud {

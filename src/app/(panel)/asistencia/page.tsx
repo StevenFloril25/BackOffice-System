@@ -15,7 +15,7 @@ export default async function PaginaAsistencia() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("participantes")
-    .select("id, nombres, apellidos, nombre_preferido, asistio_at, barrio:barrios(nombre)")
+    .select("id, nombres, apellidos, nombre_preferido, asistio_at, talla_camiseta, barrio:barrios(nombre)")
     .order("apellidos")
     .limit(5000);
 
@@ -25,6 +25,7 @@ export default async function PaginaAsistencia() {
     preferido: p.nombre_preferido,
     barrio: (p.barrio as unknown as { nombre: string } | null)?.nombre ?? "",
     asistio_at: p.asistio_at,
+    talla: p.talla_camiseta,
   }));
 
   return (

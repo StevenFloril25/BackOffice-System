@@ -24,12 +24,14 @@ export function FotoParticipante({ id, url, texto, editable }: { id: string; url
 export function Asistencia({
   id,
   nombre,
+  talla,
   asistioAt,
   registradoPor,
   puedeRegistrar,
 }: {
   id: string;
   nombre: string;
+  talla: string | null;
   asistioAt: string | null;
   registradoPor: string | null;
   puedeRegistrar: boolean;
@@ -39,6 +41,7 @@ export function Asistencia({
   const [confirmarAnular, setConfirmarAnular] = useState(false);
   // Cada llegada marcada abre el modal breve (la `key` lo vuelve a montar).
   const [registros, setRegistros] = useState(0);
+  const tallaCorta = talla?.replace(" (unisex)", "") ?? null;
 
   const cambiar = (asistio: boolean) =>
     iniciar(async () => {
@@ -51,7 +54,18 @@ export function Asistencia({
 
   return (
     <Tarjeta>
-      {registros > 0 && <AvisoBreve key={registros} titulo="Participante registrado" detalle={nombre} />}
+      {registros > 0 && (
+        <AvisoBreve
+          key={registros}
+          titulo="Participante registrado"
+          detalle={
+            <>
+              <span className="block">{nombre}</span>
+              <span className="mt-2 block font-semibold text-hoja-700">Kit entregado{tallaCorta && ` · talla ${tallaCorta}`}</span>
+            </>
+          }
+        />
+      )}
       <EncabezadoTarjeta titulo="Llegada" />
       <div className="space-y-4 p-5 sm:p-6">
         {error && <Alerta tipo="error">{error}</Alerta>}
@@ -64,13 +78,15 @@ export function Asistencia({
                 <Fecha iso={asistioAt} conHora />
                 {registradoPor && <> · registró {registradoPor}</>}
               </p>
+              <p className="mt-1 font-medium">Kit entregado{tallaCorta && ` · talla ${tallaCorta}`}</p>
             </div>
           </div>
         ) : (
           <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-4 text-slate-600">
             <Clock className="mt-0.5 size-5 shrink-0" aria-hidden />
             <p className="text-sm">
-              <span className="font-semibold">Aún no llega.</span> Se registra al leer su QR en la entrada.
+              <span className="font-semibold">Aún no llega.</span> Se registra al leer su QR en la entrada, y ahí
+              mismo recibe su kit{tallaCorta && ` (talla ${tallaCorta})`}.
             </p>
           </div>
         )}
