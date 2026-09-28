@@ -9,10 +9,11 @@ import {
   type Alcance,
   type CompaniaParaRepartir,
   type EdificioParaAcomodar,
+  type JovenParaAcomodar,
   type JovenParaRepartir,
   type LiderParaAcomodar,
   type ModoEdades,
-  type PersonaParaAcomodar,
+  type OpcionesCamas,
 } from "@/lib/distribucion";
 import type { Funcion, Sexo } from "@/lib/organizacion-comun";
 import { edad, nombreCompleto } from "@/lib/participantes-comun";
@@ -134,12 +135,21 @@ export async function propuestaCompanias(eleccion: EleccionReparto, puedeCrear: 
   };
 }
 
-export async function propuestaCamas(alcance: Alcance) {
+/** Por defecto, por edad con compañías y barrios mezclados, en los pisos justos y parejos. */
+export function leerOpcionesCamas(p: { alcance?: string; modo?: string; pisos?: string }): OpcionesCamas {
+  return {
+    alcance: leerAlcance(p.alcance),
+    modo: p.modo === "companias" ? "companias" : "edad",
+    llenado: p.pisos === "llenar" ? "llenar" : "parejo",
+  };
+}
+
+export async function propuestaCamas(opciones: OpcionesCamas) {
   const supabase = await createClient();
   const [lista, edificios, participantes, consejeros] = await Promise.all([
     companias(),
     supabase.from("edificios").select("id, nombre, sexo, habitaciones(id, piso, nombre, tipo, capacidad)"),
-    supabase.from("participantes").select("id, nombres, apellidos, sexo, compania_id, habitacion_id"),
+    supabase.from("participantes").select("id, nombres, apellidos, sexo, fecha_nacimiento, barrio_id, compania_id, habitacion_id"),
     supabase.from("consejeros").select("id, nombres, apellidos, sexo, funcion, coordina_compania_id, habitacion_id"),
   ]);
   for (const r of [edificios, participantes, consejeros]) {
@@ -152,10 +162,13 @@ export async function propuestaCamas(alcance: Alcance) {
     if (c.consejero_id) titular.set(c.consejero_id, c.id);
     if (c.consejera_id) titular.set(c.consejera_id, c.id);
   }
-  const jovenes: PersonaParaAcomodar[] = (participantes.data ?? []).map((j) => ({
+  const jovenes: JovenParaAcomodar[] = (participantes.data ?? []).map((j) => ({
     id: j.id,
     nombre: nombreCompleto(j),
     sexo: j.sexo as Sexo | null,
+    fecha_nacimiento: j.fecha_nacimiento,
+    edad: edad(j.fecha_nacimiento),
+    barrio_id: j.barrio_id,
     compania_id: j.compania_id,
     habitacion_id: j.habitacion_id,
   }));
@@ -168,11 +181,13 @@ export async function propuestaCamas(alcance: Alcance) {
     compania_id: titular.get(c.id) ?? c.coordina_compania_id ?? null,
     habitacion_id: c.habitacion_id,
   }));
-  const propuesta = proponerCamas((edificios.data ?? []) as EdificioParaAcomodar[], jovenes, lideres, lista, alcance);
+  const propuesta = proponerCamas((edificios.data ?? []) as EdificioParaAcomodar[], jovenes, lideres, lista, opciones);
+  // Por edad entran todos los que tienen sexo; juntas por compañía, solo los que ya tienen compañía.
+  const entran = jovenes.filter((j) => j.sexo && (opciones.modo === "edad" || j.compania_id));
   return {
     propuesta,
-    conCompania: jovenes.filter((j) => j.compania_id).length,
-    sinCama: jovenes.filter((j) => j.compania_id && !j.habitacion_id).length,
+    entran: entran.length,
+    sinCama: entran.filter((j) => !j.habitacion_id).length,
     hayEdificios: (edificios.data ?? []).length > 0,
   };
 }

@@ -101,7 +101,7 @@ export default async function PaginaHabitaciones({ searchParams }: { searchParam
             {puede(sesion, "habitaciones.editar") && edificios.length > 0 && (
               <EnlaceBoton href="/habitaciones/acomodar" variante="secundario">
                 <Wand2 className="size-4" aria-hidden />
-                Acomodar por compañías
+                Acomodo sugerido
               </EnlaceBoton>
             )}
             <AccionesHabitaciones puedeCrear={puede(sesion, "habitaciones.crear")} />

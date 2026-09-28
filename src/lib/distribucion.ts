@@ -332,8 +332,23 @@ function mezclarBarrios(fijos: JovenParaRepartir[], movibles: JovenParaRepartir[
 }
 
 // ---------------------------------------------------------------------------
-// Compañías en pisos
+// Jóvenes y líderes en pisos
 // ---------------------------------------------------------------------------
+
+/**
+ * "edad": cada piso con jóvenes de edades cercanas (el piso 1, los más
+ * jóvenes), con compañías y barrios mezclados. "companias": cada compañía junta
+ * en un piso, como la hoja de distribución.
+ */
+export type ModoCamas = "edad" | "companias";
+/** "parejo": los pisos justos, con la misma cantidad en cada uno. "llenar": piso por piso hasta llenarlo. */
+export type LlenadoPisos = "parejo" | "llenar";
+
+export interface OpcionesCamas {
+  alcance: Alcance;
+  modo: ModoCamas;
+  llenado: LlenadoPisos;
+}
 
 export interface HabitacionParaAcomodar {
   id: string;
@@ -358,6 +373,13 @@ export interface PersonaParaAcomodar {
   habitacion_id: string | null;
 }
 
+export interface JovenParaAcomodar extends PersonaParaAcomodar {
+  /** AAAA-MM-DD */
+  fecha_nacimiento: string | null;
+  edad: number | null;
+  barrio_id: string | null;
+}
+
 export interface LiderParaAcomodar extends PersonaParaAcomodar {
   funcion: Funcion;
   /** Ocupa el lugar de consejero/a de su compañía (si no, la coordina). */
@@ -379,6 +401,10 @@ export interface PisoPropuesto {
   ocupadas: number;
   /** Jóvenes por número de compañía; 0 = sin compañía. */
   porCompania: Record<number, number>;
+  /** [mínima, máxima] de los jóvenes del piso. */
+  edades: [number, number] | null;
+  /** Cuántos barrios distintos hay en el piso. */
+  barrios: number;
   nuevos: number;
   camasLideres: number;
   lideres: LiderEnPiso[];
@@ -394,37 +420,91 @@ export interface PropuestaCamas {
   huella: string;
 }
 
+interface Cupo {
+  h: HabitacionParaAcomodar;
+  libres: number;
+}
+
 interface Piso {
   edificio: EdificioParaAcomodar;
   numero: number;
-  dormitorios: { h: HabitacionParaAcomodar; libres: number }[];
-  lideres: { h: HabitacionParaAcomodar; libres: number }[];
+  dormitorios: Cupo[];
+  lideres: Cupo[];
 }
 
 const libresDe = (p: Piso) => p.dormitorios.reduce((n, d) => n + d.libres, 0);
+const libresLideres = (p: Piso) => p.lideres.reduce((n, d) => n + d.libres, 0);
+const nombrePiso = (p: Piso) => `${p.edificio.nombre} ${p.numero}`;
+const diaDe = (fecha: string | null) => (fecha ? Date.parse(`${fecha}T12:00:00Z`) / 86_400_000 : null);
+/** Los más jóvenes primero (nacieron después). */
+const porEdad = (a: JovenParaAcomodar, b: JovenParaAcomodar) =>
+  (b.fecha_nacimiento ?? "").localeCompare(a.fecha_nacimiento ?? "") || porNombre.compare(a.nombre, b.nombre);
+
+/** Cuántos van a cada piso para usar los pisos justos, con la misma cantidad en cada uno. */
+function metasParejas(pisos: Piso[], n: number): Map<Piso, number> {
+  const usados: Piso[] = [];
+  let capacidad = 0;
+  for (const p of pisos) {
+    if (capacidad >= n) break;
+    if (libresDe(p) === 0) continue;
+    usados.push(p);
+    capacidad += libresDe(p);
+  }
+  const metas = new Map<Piso, number>();
+  for (let i = 0; i < Math.min(n, capacidad); i++) {
+    let menor: Piso | null = null;
+    for (const p of usados) {
+      const m = metas.get(p) ?? 0;
+      if (m < libresDe(p) && (menor === null || m < (metas.get(menor) ?? 0))) menor = p;
+    }
+    metas.set(menor!, (metas.get(menor!) ?? 0) + 1);
+  }
+  return metas;
+}
+
+/** Cuántos van a cada piso llenándolos en orden. */
+function metasLlenando(pisos: Piso[], n: number): Map<Piso, number> {
+  const metas = new Map<Piso, number>();
+  let quedan = n;
+  for (const p of pisos) {
+    const m = Math.min(libresDe(p), quedan);
+    if (m > 0) metas.set(p, m);
+    quedan -= m;
+  }
+  return metas;
+}
 
 /**
- * Acomoda las compañías en los pisos, como la hoja de distribución: por sexo,
- * edificio por edificio (en orden alfabético) y piso por piso desde el 1, cada
- * compañía junta en un piso (la primera que tenga lugar para todos). Si una no
- * entra entera en ningún piso, se reparte y se avisa. Los consejeros duermen en
- * la habitación de líderes del piso de sus jóvenes; los coordinadores, donde
- * quede lugar, cerca.
+ * Propone dónde duerme cada uno, por sexo, edificio por edificio (en orden
+ * alfabético) y piso por piso desde el 1.
+ *  - "edad": se ordenan por edad y cada piso toma a los que siguen, sin que más
+ *    de la mitad de una compañía caiga en el mismo piso; después se intercambian
+ *    jóvenes de la misma edad entre pisos mientras eso mezcle más compañías y
+ *    barrios. Así cada piso queda con edades cercanas "dentro de lo que cabe".
+ *  - "companias": cada compañía junta en un piso (la primera que tenga lugar
+ *    para todos); si no entra entera en ninguno, se reparte y se avisa.
+ * Los consejeros duermen en la habitación de líderes del piso donde está la
+ * mayoría de su compañía, cuidando que ningún piso con jóvenes quede sin líder;
+ * los coordinadores, donde quede lugar, cerca.
  */
 export function proponerCamas(
   edificios: EdificioParaAcomodar[],
-  jovenes: PersonaParaAcomodar[],
+  jovenes: JovenParaAcomodar[],
   lideres: LiderParaAcomodar[],
   companias: CompaniaParaRepartir[],
-  alcance: Alcance,
+  opciones: OpcionesCamas,
 ): PropuestaCamas {
+  const { alcance, modo, llenado } = opciones;
   const avisos: string[] = [];
   const numeroDe = new Map(companias.map((c) => [c.id, c.numero]));
   const orden = [...companias].sort((a, b) => a.numero - b.numero);
   const rehacer = alcance === "rehacer";
+  const conCompania = (p: PersonaParaAcomodar) => Boolean(p.compania_id && numeroDe.has(p.compania_id));
 
-  const movibleJoven = (j: PersonaParaAcomodar) => Boolean(j.sexo && j.compania_id && numeroDe.has(j.compania_id) && (rehacer || !j.habitacion_id));
-  const movibleLider = (l: LiderParaAcomodar) => Boolean(l.sexo && l.compania_id && numeroDe.has(l.compania_id) && (rehacer || !l.habitacion_id));
+  // Por edad no hace falta compañía; juntas por compañía, sí.
+  const movibleJoven = (j: JovenParaAcomodar) =>
+    Boolean(j.sexo && (modo === "edad" || conCompania(j)) && (rehacer || !j.habitacion_id));
+  const movibleLider = (l: LiderParaAcomodar) => Boolean(l.sexo && conCompania(l) && (rehacer || !l.habitacion_id));
 
   // Camas libres de cada habitación, descontando a quienes se quedan donde están.
   const ocupadasFijas = new Map<string, number>();
@@ -447,13 +527,15 @@ export function proponerCamas(
   }
   const pisoDe = new Map<string, Piso>();
   for (const p of pisos) for (const d of [...p.dormitorios, ...p.lideres]) pisoDe.set(d.h.id, p);
+  const esDormitorio = new Set(pisos.flatMap((p) => p.dormitorios.map((d) => d.h.id)));
 
   const camaJoven = new Map<string, string | null>();
   const camaLider = new Map<string, string | null>();
-  /** Dónde queda cada joven (fijo o acomodado), para ubicar a sus líderes. */
   const habitacionFinal = (j: PersonaParaAcomodar) => (camaJoven.has(j.id) ? camaJoven.get(j.id)! : j.habitacion_id);
+  const habitacionFinalLider = (l: LiderParaAcomodar) => (camaLider.has(l.id) ? camaLider.get(l.id)! : l.habitacion_id);
 
-  const poner = (piso: Piso, personas: PersonaParaAcomodar[]) => {
+  /** Da cama en el piso a los de la lista, en orden; devuelve los que no entraron. */
+  const poner = <T extends PersonaParaAcomodar>(piso: Piso, personas: T[]): T[] => {
     let i = 0;
     for (const d of piso.dormitorios) {
       while (d.libres > 0 && i < personas.length) {
@@ -466,81 +548,278 @@ export function proponerCamas(
 
   for (const sexo of SEXOS) {
     const pisosSexo = pisos.filter((p) => p.edificio.sexo === sexo);
+    const lista = jovenes.filter((j) => j.sexo === sexo && movibleJoven(j));
     let sinLugar = 0;
-    for (const c of orden) {
-      let grupo = jovenes
-        .filter((j) => j.sexo === sexo && j.compania_id === c.id && movibleJoven(j))
-        .sort((a, b) => porNombre.compare(a.nombre, b.nombre));
-      if (grupo.length === 0) continue;
-      // Si parte de la compañía ya tiene cama (al completar), primero ese piso.
-      const pisosPrevios = new Map<Piso, number>();
-      for (const j of jovenes) {
-        const h = !movibleJoven(j) && j.sexo === sexo && j.compania_id === c.id ? j.habitacion_id : null;
-        const p = h ? pisoDe.get(h) : undefined;
-        if (p) pisosPrevios.set(p, (pisosPrevios.get(p) ?? 0) + 1);
+
+    if (modo === "edad") {
+      const destino = new Map<string, Piso>();
+      const ordenados = [...lista].sort(porEdad);
+      const fijos = jovenes.filter(
+        (j) => j.sexo === sexo && !movibleJoven(j) && j.habitacion_id !== null && esDormitorio.has(j.habitacion_id),
+      );
+
+      if (fijos.length === 0) {
+        // Tramos de edad, sin que más de la mitad de una compañía caiga en un piso.
+        const metas = llenado === "llenar" ? metasLlenando(pisosSexo, ordenados.length) : metasParejas(pisosSexo, ordenados.length);
+        const usados = pisosSexo.filter((p) => (metas.get(p) ?? 0) > 0);
+        const tamano = new Map<string, number>();
+        for (const j of ordenados) if (j.compania_id) tamano.set(j.compania_id, (tamano.get(j.compania_id) ?? 0) + 1);
+        const tope = (c: string) => Math.ceil(tamano.get(c)! / Math.min(usados.length, 2));
+        let restantes = ordenados;
+        usados.forEach((p, i) => {
+          const meta = metas.get(p)!;
+          const tomados: JovenParaAcomodar[] = [];
+          const cuenta = new Map<string, number>();
+          const tomar = (j: JovenParaAcomodar) => {
+            tomados.push(j);
+            if (j.compania_id) cuenta.set(j.compania_id, (cuenta.get(j.compania_id) ?? 0) + 1);
+          };
+          // Primero, de cada compañía los que ya no entrarían en los pisos que
+          // quedan sin pasar el tope (si no, las mayores terminan todas juntas
+          // en el último piso). Después, por edad.
+          const pisosDespues = usados.length - i - 1;
+          const quedan = new Map<string, JovenParaAcomodar[]>();
+          for (const j of restantes) if (j.compania_id) quedan.set(j.compania_id, [...(quedan.get(j.compania_id) ?? []), j]);
+          for (const [c, lista] of quedan) {
+            const obligados = lista.length - pisosDespues * tope(c);
+            for (const j of lista.slice(0, Math.max(0, obligados))) if (tomados.length < meta) tomar(j);
+          }
+          const yaTomados = new Set(tomados.map((j) => j.id));
+          const saltados: JovenParaAcomodar[] = [];
+          for (const j of restantes) {
+            if (yaTomados.has(j.id)) continue;
+            const c = j.compania_id;
+            if (tomados.length >= meta || (c && (cuenta.get(c) ?? 0) >= tope(c))) {
+              saltados.push(j);
+              continue;
+            }
+            tomar(j);
+          }
+          // Si el tope no dejó llenar el piso, se completa con los que siguen.
+          while (tomados.length < meta && saltados.length) tomados.push(saltados.shift()!);
+          for (const j of tomados) destino.set(j.id, p);
+          restantes = saltados;
+        });
+        sinLugar = restantes.length;
+      } else {
+        // Al completar: cada uno al piso con edades más parecidas a la suya que tenga lugar.
+        const libres = new Map(pisosSexo.map((p) => [p, libresDe(p)]));
+        const edades = new Map<Piso, { n: number; suma: number }>();
+        const sumar = (p: Piso, d: number | null) => {
+          if (d === null) return;
+          const e = edades.get(p) ?? { n: 0, suma: 0 };
+          edades.set(p, { n: e.n + 1, suma: e.suma + d });
+        };
+        for (const j of fijos) sumar(pisoDe.get(j.habitacion_id!)!, diaDe(j.fecha_nacimiento));
+        for (const j of ordenados) {
+          const conLugar = pisosSexo.filter((p) => libres.get(p)! > 0);
+          if (conLugar.length === 0) {
+            sinLugar++;
+            continue;
+          }
+          const d = diaDe(j.fecha_nacimiento);
+          const habitados = conLugar.filter((p) => edades.get(p)?.n);
+          let elegido = habitados[0] ?? conLugar[0];
+          if (d !== null) {
+            for (const p of habitados) {
+              const e = edades.get(p)!;
+              const actual = edades.get(elegido)!;
+              if (Math.abs(e.suma / e.n - d) < Math.abs(actual.suma / actual.n - d)) elegido = p;
+            }
+          }
+          destino.set(j.id, elegido);
+          libres.set(elegido, libres.get(elegido)! - 1);
+          sumar(elegido, d);
+        }
       }
-      const preferidos = [...pisosPrevios.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => p);
-      const entero = [...preferidos, ...pisosSexo].find((p) => libresDe(p) >= grupo.length);
-      if (entero) {
-        poner(entero, grupo);
-        continue;
+
+      mezclarPisos(
+        fijos.map((j) => ({ j, p: pisoDe.get(j.habitacion_id!)! })),
+        ordenados,
+        destino,
+      );
+      for (const p of pisosSexo) {
+        const aqui = ordenados.filter((j) => destino.get(j.id) === p);
+        for (const j of poner(p, aqui)) camaJoven.set(j.id, null);
       }
-      // No entra junta en ningún piso: se reparte, empezando por donde haya más lugar.
-      const usados = new Set<Piso>();
-      for (const p of [...preferidos, ...[...pisosSexo].sort((a, b) => libresDe(b) - libresDe(a))]) {
-        if (grupo.length === 0) break;
-        if (libresDe(p) === 0 || usados.has(p)) continue;
-        usados.add(p);
-        grupo = poner(p, grupo);
+      for (const j of ordenados) if (!destino.has(j.id)) camaJoven.set(j.id, null);
+    } else {
+      for (const c of orden) {
+        let grupo = lista.filter((j) => j.compania_id === c.id).sort((a, b) => porNombre.compare(a.nombre, b.nombre));
+        if (grupo.length === 0) continue;
+        // Si parte de la compañía ya tiene cama (al completar), primero ese piso.
+        const pisosPrevios = new Map<Piso, number>();
+        for (const j of jovenes) {
+          const h = !movibleJoven(j) && j.sexo === sexo && j.compania_id === c.id ? j.habitacion_id : null;
+          const p = h ? pisoDe.get(h) : undefined;
+          if (p) pisosPrevios.set(p, (pisosPrevios.get(p) ?? 0) + 1);
+        }
+        const preferidos = [...pisosPrevios.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => p);
+        const entero = [...preferidos, ...pisosSexo].find((p) => libresDe(p) >= grupo.length);
+        if (entero) {
+          poner(entero, grupo);
+          continue;
+        }
+        // No entra junta en ningún piso: se reparte, empezando por donde haya más lugar.
+        const usados = new Set<Piso>();
+        for (const p of [...preferidos, ...[...pisosSexo].sort((a, b) => libresDe(b) - libresDe(a))]) {
+          if (grupo.length === 0) break;
+          if (libresDe(p) === 0 || usados.has(p)) continue;
+          usados.add(p);
+          grupo = poner(p, grupo);
+        }
+        if (usados.size > 1) {
+          avisos.push(`La compañía ${c.numero} no entra junta en un piso: sus ${sexo === "Mujer" ? "mujeres" : "hombres"} quedan en ${usados.size} pisos.`);
+        }
+        for (const j of grupo) camaJoven.set(j.id, null);
+        sinLugar += grupo.length;
       }
-      if (usados.size > 1) avisos.push(`La compañía ${c.numero} no entra junta en un piso: sus ${sexo === "Mujer" ? "mujeres" : "hombres"} quedan en ${usados.size} pisos.`);
-      for (const j of grupo) camaJoven.set(j.id, null);
-      sinLugar += grupo.length;
     }
-    if (sinLugar > 0) avisos.push(`Faltan ${sinLugar} ${sexo === "Mujer" ? "camas de mujeres" : "camas de hombres"}: ${sinLugar === 1 ? "queda 1 joven" : `quedan ${sinLugar} jóvenes`} sin cama. Agrega pisos o camas.`);
+    if (sinLugar > 0) {
+      avisos.push(
+        `Faltan ${sinLugar} ${sexo === "Mujer" ? "camas de mujeres" : "camas de hombres"}: ${sinLugar === 1 ? "queda 1 joven" : `quedan ${sinLugar} jóvenes`} sin cama. Agrega pisos o camas.`,
+      );
+    }
   }
 
-  // Líderes: primero consejeros y consejeras (al piso con más jóvenes de su
-  // compañía y su sexo), después los coordinadores.
-  const lideresMovibles = lideres
-    .filter(movibleLider)
-    .sort((a, b) => Number(b.titular) - Number(a.titular) || (numeroDe.get(a.compania_id!) ?? 0) - (numeroDe.get(b.compania_id!) ?? 0) || porNombre.compare(a.nombre, b.nombre));
-  const lejos: string[] = [];
-  const sinCamaLider: string[] = [];
-  for (const l of lideresMovibles) {
+  // ---- Líderes ----
+  // Jóvenes de cada compañía y sexo por piso, ya acomodados.
+  const cuentaEn = new Map<string, Map<Piso, number>>();
+  for (const j of jovenes) {
+    const h = habitacionFinal(j);
+    const p = h ? pisoDe.get(h) : undefined;
+    if (!p || !j.compania_id || !j.sexo) continue;
+    const clave = `${j.compania_id}|${j.sexo}`;
+    const m = cuentaEn.get(clave) ?? new Map<Piso, number>();
+    m.set(p, (m.get(p) ?? 0) + 1);
+    cuentaEn.set(clave, m);
+  }
+  const suyosDe = (l: LiderParaAcomodar) => cuentaEn.get(`${l.compania_id}|${l.sexo}`) ?? new Map<Piso, number>();
+  const pisoPrincipal = (l: LiderParaAcomodar) =>
+    [...suyosDe(l).entries()].sort((a, b) => b[1] - a[1] || pisos.indexOf(a[0]) - pisos.indexOf(b[0]))[0]?.[0];
+  const preferencias = (l: LiderParaAcomodar) => {
     const pisosSexo = pisos.filter((p) => p.edificio.sexo === l.sexo);
-    const cuenta = new Map<Piso, number>();
-    for (const j of jovenes) {
-      if (j.compania_id !== l.compania_id || j.sexo !== l.sexo) continue;
-      const h = habitacionFinal(j);
-      const p = h ? pisoDe.get(h) : undefined;
-      if (p) cuenta.set(p, (cuenta.get(p) ?? 0) + 1);
-    }
-    const suyos = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => p);
+    const suyos = [...suyosDe(l).entries()].sort((a, b) => b[1] - a[1] || pisos.indexOf(a[0]) - pisos.indexOf(b[0])).map(([p]) => p);
     const cerca = suyos.length ? pisosSexo.filter((p) => p.edificio.id === suyos[0].edificio.id) : [];
-    const candidatos = [...suyos, ...cerca, ...pisosSexo];
-    let puesto: string | null = null;
-    for (const p of candidatos) {
-      const libre = p.lideres.find((d) => d.libres > 0);
-      if (libre) {
-        libre.libres--;
-        puesto = libre.h.id;
-        if (suyos.length && p !== suyos[0] && l.titular) lejos.push(l.nombre);
-        break;
+    return [...new Set([...suyos, ...cerca, ...pisosSexo])];
+  };
+  const lideresEn = new Map<Piso, number>();
+  for (const l of lideres) {
+    if (movibleLider(l) || !l.habitacion_id) continue;
+    const p = pisoDe.get(l.habitacion_id);
+    if (p) lideresEn.set(p, (lideresEn.get(p) ?? 0) + 1);
+  }
+  const ponerLider = (l: LiderParaAcomodar, p: Piso) => {
+    const cupo = p.lideres.find((d) => d.libres > 0)!;
+    cupo.libres--;
+    camaLider.set(l.id, cupo.h.id);
+    lideresEn.set(p, (lideresEn.get(p) ?? 0) + 1);
+  };
+  const sacarLider = (l: LiderParaAcomodar) => {
+    const h = camaLider.get(l.id);
+    const p = h ? pisoDe.get(h) : undefined;
+    if (!h || !p) return;
+    p.lideres.find((d) => d.h.id === h)!.libres++;
+    lideresEn.set(p, (lideresEn.get(p) ?? 0) - 1);
+    camaLider.set(l.id, null);
+  };
+
+  const movibles = lideres
+    .filter(movibleLider)
+    .sort(
+      (a, b) =>
+        (numeroDe.get(a.compania_id!) ?? 0) - (numeroDe.get(b.compania_id!) ?? 0) || porNombre.compare(a.nombre, b.nombre),
+    );
+  const titulares = movibles.filter((l) => l.titular);
+  const coordinadores = movibles.filter((l) => !l.titular);
+  const sinCamaLider: string[] = [];
+  const acomodarLider = (l: LiderParaAcomodar) => {
+    const p = preferencias(l).find((x) => libresLideres(x) > 0);
+    if (p) ponerLider(l, p);
+    else {
+      camaLider.set(l.id, null);
+      sinCamaLider.push(l.nombre);
+    }
+  };
+  titulares.forEach(acomodarLider);
+
+  // Ningún piso con jóvenes sin líder, y de ser posible dos (lo que pide la
+  // guía): de un piso que tenga de sobra se pasa un consejero cuya compañía
+  // también tenga jóvenes en este.
+  const conJovenes = (p: Piso) =>
+    jovenes.some((j) => {
+      const h = habitacionFinal(j);
+      return h !== null && esDormitorio.has(h) && pisoDe.get(h) === p;
+    });
+  for (const minimo of [1, 2]) {
+    for (const p of pisos) {
+      if ((lideresEn.get(p) ?? 0) >= minimo || libresLideres(p) === 0 || !conJovenes(p)) continue;
+      const candidato = titulares
+        .filter((l) => {
+          const h = camaLider.get(l.id);
+          const q = h ? pisoDe.get(h) : undefined;
+          return l.sexo === p.edificio.sexo && q !== undefined && q !== p && (lideresEn.get(q) ?? 0) > minimo && (suyosDe(l).get(p) ?? 0) > 0;
+        })
+        .sort((a, b) => (suyosDe(b).get(p) ?? 0) - (suyosDe(a).get(p) ?? 0))[0];
+      if (candidato) {
+        sacarLider(candidato);
+        ponerLider(candidato, p);
       }
     }
-    camaLider.set(l.id, puesto);
-    if (!puesto) sinCamaLider.push(l.nombre);
   }
-  if (lejos.length) avisos.push(`Sin lugar en la habitación de líderes del piso de sus jóvenes: ${lejos.join(", ")} (duermen en otro piso).`);
+  coordinadores.forEach(acomodarLider);
+
+  // Juntas por compañía, cada consejero va con su compañía. Por edad las
+  // compañías están repartidas: basta con que duerma donde hay jóvenes suyos.
+  const lejos = titulares
+    .filter((l) => {
+      const h = camaLider.get(l.id);
+      const p = h ? pisoDe.get(h) : undefined;
+      if (!p || suyosDe(l).size === 0) return false;
+      return modo === "companias" ? p !== pisoPrincipal(l) : !suyosDe(l).get(p);
+    })
+    .map((l) => l.nombre);
+  if (lejos.length) {
+    avisos.push(
+      modo === "companias"
+        ? `Duermen en un piso distinto al de la mayoría de su compañía: ${lejos.join(", ")}.`
+        : `Duermen en un piso sin jóvenes de su compañía: ${lejos.join(", ")}.`,
+    );
+  }
   if (sinCamaLider.length) avisos.push(`No hay camas de líderes libres para: ${sinCamaLider.join(", ")}.`);
 
-  const jovenesSinCompania = jovenes.filter((j) => !j.compania_id && !j.habitacion_id).length;
-  if (jovenesSinCompania) avisos.push(`${jovenesSinCompania === 1 ? "1 joven sin compañía no se acomoda" : `${jovenesSinCompania} jóvenes sin compañía no se acomodan`}: primero repártelos en compañías.`);
-  const sinSexo = jovenes.filter((j) => !j.sexo && j.compania_id && !j.habitacion_id).length;
+  const pisosConJovenes = pisos.filter(conJovenes);
+  const lideresPorPiso = (p: Piso) =>
+    lideres.filter((l) => {
+      const h = habitacionFinalLider(l);
+      return h !== null && pisoDe.get(h) === p;
+    }).length;
+  const sinLider = pisosConJovenes.filter((p) => lideresPorPiso(p) === 0);
+  if (!lideres.some((l) => l.titular) && pisosConJovenes.length) {
+    avisos.push("Todavía no hay consejeros asignados a compañías: los pisos quedan sin líderes por ahora.");
+  } else if (sinLider.length) {
+    avisos.push(`Pisos con jóvenes y sin ningún líder: ${sinLider.map(nombrePiso).join(", ")}.`);
+  } else {
+    const unSolo = pisosConJovenes.filter((p) => lideresPorPiso(p) === 1);
+    if (unSolo.length) avisos.push(`La guía recomienda dos o más consejeros por piso; tienen uno: ${unSolo.map(nombrePiso).join(", ")}.`);
+  }
+
+  if (modo === "companias") {
+    const jovenesSinCompania = jovenes.filter((j) => !j.compania_id && !j.habitacion_id).length;
+    if (jovenesSinCompania) {
+      avisos.push(
+        `${jovenesSinCompania === 1 ? "1 joven sin compañía no se acomoda" : `${jovenesSinCompania} jóvenes sin compañía no se acomodan`}: primero repártelos en compañías.`,
+      );
+    }
+  }
+  const sinSexo = jovenes.filter((j) => !j.sexo && !j.habitacion_id && (modo === "edad" || j.compania_id)).length;
   if (sinSexo) avisos.push(`${sinSexo === 1 ? "1 joven" : `${sinSexo} jóvenes`} sin sexo indicado: complétalo en su ficha para darle cama.`);
   const lideresSinCompania = lideres.filter((l) => !l.compania_id && !l.habitacion_id).length;
-  if (lideresSinCompania) avisos.push(`${lideresSinCompania === 1 ? "1 consejero o coordinador sin compañía no se acomoda" : `${lideresSinCompania} consejeros o coordinadores sin compañía no se acomodan`}.`);
+  if (lideresSinCompania) {
+    avisos.push(
+      `${lideresSinCompania === 1 ? "1 consejero o coordinador sin compañía no se acomoda" : `${lideresSinCompania} consejeros o coordinadores sin compañía no se acomodan`}.`,
+    );
+  }
 
   // Vista por piso, con lo que ya estaba y lo nuevo.
   const numeroDeJoven = (j: PersonaParaAcomodar) => (j.compania_id ? (numeroDe.get(j.compania_id) ?? 0) : 0);
@@ -553,9 +832,10 @@ export function proponerCamas(
     });
     const porCompania: Record<number, number> = {};
     for (const j of aqui) porCompania[numeroDeJoven(j)] = (porCompania[numeroDeJoven(j)] ?? 0) + 1;
+    const edades = aqui.map((j) => j.edad).filter((e): e is number => e !== null);
     const lideresAqui = lideres
       .filter((l) => {
-        const h = camaLider.has(l.id) ? camaLider.get(l.id)! : l.habitacion_id;
+        const h = habitacionFinalLider(l);
         return h !== null && deLideres.has(h);
       })
       .map((l) => ({
@@ -572,6 +852,8 @@ export function proponerCamas(
       camas: p.dormitorios.reduce((n, d) => n + d.h.capacidad, 0),
       ocupadas: aqui.length,
       porCompania,
+      edades: edades.length ? [Math.min(...edades), Math.max(...edades)] : null,
+      barrios: new Set(aqui.map((j) => j.barrio_id ?? `solo:${j.id}`)).size,
       nuevos: aqui.filter((j) => camaJoven.has(j.id) && camaJoven.get(j.id) !== j.habitacion_id).length,
       camasLideres: p.lideres.reduce((n, d) => n + d.h.capacidad, 0),
       lideres: lideresAqui,
@@ -593,7 +875,57 @@ export function proponerCamas(
     avisos,
     acomodados: [...jovenesSalida, ...lideresSalida].filter((a) => a.habitacion_id && a.habitacion_id !== antes.get(a.id)).length,
     huella: huellaDe(
-      `h|${alcance}|` + [...jovenesSalida, ...lideresSalida].map((a) => `${a.id}:${a.habitacion_id ?? "-"}`).join(";"),
+      `h|${alcance}|${modo}|${llenado}|` +
+        [...jovenesSalida, ...lideresSalida].map((a) => `${a.id}:${a.habitacion_id ?? "-"}`).join(";"),
     ),
   };
+}
+
+/**
+ * Intercambia jóvenes de la misma edad entre pisos mientras eso mezcle más
+ * compañías y barrios (baja la suma de cuadrados de cuántos hay de cada
+ * compañía y de cada barrio en cada piso). Las edades de cada piso no cambian.
+ */
+function mezclarPisos(fijos: { j: JovenParaAcomodar; p: Piso }[], movibles: JovenParaAcomodar[], destino: Map<string, Piso>) {
+  const cuenta = new Map<string, number>();
+  const clave = (p: Piso, k: string) => `${p.edificio.id}|${p.numero}|${k}`;
+  const n = (p: Piso, k: string) => cuenta.get(clave(p, k)) ?? 0;
+  const sumar = (p: Piso, k: string, d: number) => cuenta.set(clave(p, k), n(p, k) + d);
+  const claves = (j: JovenParaAcomodar) => [`c:${j.compania_id ?? `solo:${j.id}`}`, `b:${j.barrio_id ?? `solo:${j.id}`}`];
+  for (const { j, p } of fijos) for (const k of claves(j)) sumar(p, k, 1);
+  for (const j of movibles) {
+    const p = destino.get(j.id);
+    if (p) for (const k of claves(j)) sumar(p, k, 1);
+  }
+  const candidatos = movibles.filter((j) => destino.has(j.id) && j.edad !== null);
+  for (let pasada = 0; pasada < 12; pasada++) {
+    let mejoro = false;
+    for (let x = 0; x < candidatos.length; x++) {
+      for (let y = x + 1; y < candidatos.length; y++) {
+        const a = candidatos[x];
+        const b = candidatos[y];
+        if (a.edad !== b.edad) continue;
+        const pa = destino.get(a.id)!;
+        const pb = destino.get(b.id)!;
+        if (pa === pb) continue;
+        const ka = claves(a);
+        const kb = claves(b);
+        let delta = 0;
+        for (let i = 0; i < ka.length; i++) {
+          if (ka[i] !== kb[i]) delta += 2 * (n(pa, kb[i]) - n(pa, ka[i]) + n(pb, ka[i]) - n(pb, kb[i])) + 4;
+        }
+        if (delta >= 0) continue;
+        for (let i = 0; i < ka.length; i++) {
+          sumar(pa, ka[i], -1);
+          sumar(pb, kb[i], -1);
+          sumar(pb, ka[i], 1);
+          sumar(pa, kb[i], 1);
+        }
+        destino.set(a.id, pb);
+        destino.set(b.id, pa);
+        mejoro = true;
+      }
+    }
+    if (!mejoro) break;
+  }
 }

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
-import { leerAlcance, propuestaCamas } from "@/lib/distribucion-datos";
+import { leerOpcionesCamas, propuestaCamas } from "@/lib/distribucion-datos";
 import { mensajeBd } from "@/lib/errores";
 import { validarPermiso } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -316,15 +316,19 @@ export async function quitarOcupante(habitacionId: string, tipo: "participante" 
 }
 
 /**
- * Aplica el acomodo sugerido de compañías en pisos, si sigue siendo el que se
- * vio (ver aplicarReparto en compañías). La base lo aplica todo o nada.
+ * Aplica el acomodo sugerido en los pisos, si sigue siendo el que se vio (ver
+ * aplicarReparto en compañías). La base lo aplica todo o nada.
  */
-export async function aplicarAcomodo(alcance: string, huella: string): Promise<EstadoHabitacion> {
+export async function aplicarAcomodo(
+  parametros: { alcance?: string; modo?: string; pisos?: string },
+  huella: string,
+): Promise<EstadoHabitacion> {
   const permiso = await validarPermiso("habitaciones.editar");
   if (!permiso.ok) return { error: permiso.error };
 
-  const cuales = leerAlcance(alcance);
-  const { propuesta } = await propuestaCamas(cuales);
+  const opciones = leerOpcionesCamas(parametros);
+  const cuales = opciones.alcance;
+  const { propuesta } = await propuestaCamas(opciones);
   if (propuesta.huella !== huella) {
     revalidatePath("/habitaciones/acomodar");
     return { error: "Algo cambió mientras mirabas la propuesta (alguien asignó camas o compañías). Ya se actualizó: revísala y vuelve a aplicar." };
@@ -343,7 +347,7 @@ export async function aplicarAcomodo(alcance: string, huella: string): Promise<E
   await registrarAuditoria(permiso.sesion, {
     accion: "habitacion.acomodo",
     entidad: "habitacion",
-    resumen: `Acomodó automáticamente ${n} ${n === 1 ? "persona" : "personas"} en las habitaciones${cuales === "rehacer" ? " (rehaciendo todo)" : ""}`,
+    resumen: `Acomodó automáticamente ${n} ${n === 1 ? "persona" : "personas"} en las habitaciones (${opciones.modo === "edad" ? "por edad, compañías mezcladas" : "cada compañía junta"}${cuales === "rehacer" ? ", rehaciendo todo" : ""})`,
   });
   refrescar();
   redirect(`/habitaciones?aviso=acomodados&n=${n}`);
