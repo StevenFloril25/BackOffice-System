@@ -49,7 +49,14 @@ const hijo = spawn("npx vercel deploy --prod --yes", {
 });
 
 hijo.on("exit", (codigo) => {
-  fs.rmSync(copia, { recursive: true, force: true });
+  // En Windows el CLI puede seguir soltando archivos un instante después de
+  // salir: se reintenta, y si igual falla, no es motivo para dar por fallido
+  // un despliegue que sí salió.
+  try {
+    fs.rmSync(copia, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+  } catch {
+    console.warn(`No se pudo borrar la copia temporal ${copia}; bórrala a mano.`);
+  }
   execSync("git worktree prune");
   const texto = fs.readFileSync(log, "utf8").replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
   const alias = texto.match(/Aliased\s+(https:\/\/\S+)/)?.[1];
