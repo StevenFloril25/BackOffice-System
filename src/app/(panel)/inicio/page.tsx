@@ -44,8 +44,8 @@ export default async function Inicio() {
     <>
       {/* Bienvenida */}
       <section className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-marca-700 via-marca-800 to-marca-950 px-6 py-8 text-white shadow-flotante/30 sm:px-10 sm:py-10">
-        <div aria-hidden className="absolute -top-20 -right-10 size-64 rounded-full bg-sol-400/80" />
-        <div aria-hidden className="absolute -top-20 -right-10 size-64 rounded-full bg-sol-400 opacity-50 blur-3xl" />
+        <div aria-hidden className="absolute -top-24 -right-14 size-72 rounded-full bg-sol-400 opacity-30 blur-3xl" />
+        <div aria-hidden className="absolute -top-16 -right-6 size-56 rounded-full bg-gradient-to-br from-sol-200 to-sol-400" />
         <svg aria-hidden viewBox="0 0 800 120" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-24 w-full">
           <path d="M0 80 C 200 20, 420 130, 800 50 L 800 120 L 0 120 Z" className="fill-hoja-500/30" />
           <path d="M0 100 C 240 60, 460 140, 800 90 L 800 120 L 0 120 Z" className="fill-marca-300/20" />

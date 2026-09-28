@@ -48,7 +48,7 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-gradient-to-b from-marca-800 via-marca-900 to-marca-950 text-white transition-transform duration-200 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-gradient-to-b from-marca-800 via-marca-900 to-marca-950 text-white transition-transform duration-200 lg:translate-x-0",
           abierto ? "translate-x-0 shadow-flotante" : "-translate-x-full",
         )}
       >

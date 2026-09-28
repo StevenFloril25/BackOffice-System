@@ -6,6 +6,8 @@ import { EnlaceBoton, EstadoVacio, Tarjeta } from "@/components/ui";
 export function SinAcceso({ permiso }: { permiso: string }) {
   return (
     <Tarjeta className="mx-auto mt-10 max-w-lg">
+      {/* Toda página necesita su título para lectores de pantalla. */}
+      <h1 className="sr-only">Sin acceso</h1>
       <EstadoVacio
         icono={<Lock className="size-5" />}
         titulo="No tienes acceso a esta sección"
