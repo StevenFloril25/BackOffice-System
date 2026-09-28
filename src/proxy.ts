@@ -33,9 +33,10 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims verifica el token localmente (y lo renueva si venció); ver
+  // obtenerSesion en lib/sesion.ts.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const esPublica = RUTAS_PUBLICAS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 

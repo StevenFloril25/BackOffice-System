@@ -33,13 +33,18 @@ export interface Sesion {
  * vez: cache() de React los comparte entre el layout y la página de la misma
  * respuesta y los descarta al terminar. No hay forma de que se mezclen entre
  * usuarios ni entre peticiones.
+ *
+ * La identidad sale de getClaims(): verifica la firma del token aquí mismo
+ * (llaves ES256 del proyecto) en vez de preguntarle al servidor de Auth en
+ * cada petición, que sumaba una ida y vuelta y a veces medio segundo. Un
+ * usuario desactivado o borrado se detecta igual al leer su perfil.
  */
 export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  const user = { id: claims.sub, email: typeof claims.email === "string" ? claims.email : undefined };
 
   const [{ data: perfil }, { data: permisos }] = await Promise.all([
     supabase
