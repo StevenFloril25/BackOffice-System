@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { History, ShieldCheck, Users } from "lucide-react";
 
-import { SolResplandor } from "@/components/sol";
 import { FormularioLogin } from "./formulario";
 
 export const metadata: Metadata = { title: "Ingresar" };
@@ -30,7 +29,7 @@ export default async function PaginaLogin({
     <main className="flex min-h-screen">
       {/* Panel de marca */}
       <section className="relative hidden w-[46%] max-w-[640px] overflow-hidden bg-gradient-to-br from-marca-800 via-marca-700 to-marca-950 text-white lg:flex lg:flex-col">
-        <SolResplandor id="sol-login" className="absolute top-0 right-0 size-[26rem] xl:size-[30rem]" />
+        <div aria-hidden className="absolute -top-24 -right-20 size-80 rounded-full bg-sol-400" />
         <svg aria-hidden viewBox="0 0 600 260" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-56 w-full">
           <path d="M0 150 C 160 60, 320 250, 600 110 L 600 260 L 0 260 Z" className="fill-hoja-500/35" />
           <path d="M0 200 C 180 120, 360 270, 600 170 L 600 260 L 0 260 Z" className="fill-marca-300/25" />
@@ -56,7 +55,7 @@ export default async function PaginaLogin({
           <div className="mt-auto mb-auto max-w-md pt-16">
             <h1 className="text-4xl leading-[1.1] font-bold tracking-tight xl:text-[2.75rem]">
               Organiza la conferencia con{" "}
-              <span className="bg-gradient-to-r from-sol-400 to-sol-200 bg-clip-text text-transparent">claridad</span>.
+              <span className="text-sol-400">claridad</span>.
             </h1>
             <p className="mt-4 text-base leading-relaxed text-marca-100/90">
               Un solo lugar para administrar al equipo, sus accesos y cada módulo del sistema.

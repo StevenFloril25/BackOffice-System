@@ -26,7 +26,6 @@
   --color-sol-600: #d9820b;
   --color-sol-500: #f59e1b;
   --color-sol-400: #feb347;
-  --color-sol-300: #ffc862;
   --color-sol-200: #ffe0ad;
   --color-sol-100: #fff3de;
 
@@ -78,21 +77,4 @@
 
 .animar-entrada {
   animation: aparecer 0.25s ease-out both;
-}
-
-/* Barras de resplandor del sol: laten suave, cada una desfasada. */
-@keyframes destello {
-  0%,
-  100% {
-    opacity: var(--o, 1);
-  }
-  50% {
-    opacity: calc(var(--o, 1) * 0.4);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .sol-destello {
-    animation: destello 3.2s ease-in-out infinite;
-  }
 }

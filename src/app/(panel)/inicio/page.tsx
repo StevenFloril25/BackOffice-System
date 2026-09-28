@@ -4,7 +4,6 @@ import { ArrowRight, History, ShieldCheck, UserCheck, UserPlus, Users } from "lu
 
 import { Fecha } from "@/components/cliente";
 import { Icono } from "@/components/iconos";
-import { SolResplandor } from "@/components/sol";
 import { Alerta, Avatar, EncabezadoTarjeta, EnlaceBoton, Tarjeta } from "@/components/ui";
 import { MENU } from "@/lib/navegacion";
 import { catalogoPermisos, resumenRoles } from "@/lib/roles";
@@ -45,11 +44,15 @@ export default async function Inicio() {
     <>
       {/* Bienvenida */}
       <section className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-marca-700 via-marca-800 to-marca-950 px-6 py-8 text-white shadow-flotante/30 sm:px-10 sm:py-10">
-        <SolResplandor id="sol-inicio" className="absolute top-0 right-0 size-40 sm:size-56 lg:size-64" />
         <svg aria-hidden viewBox="0 0 800 120" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-24 w-full">
           <path d="M0 80 C 200 20, 420 130, 800 50 L 800 120 L 0 120 Z" className="fill-hoja-500/30" />
           <path d="M0 100 C 240 60, 460 140, 800 90 L 800 120 L 0 120 Z" className="fill-marca-300/20" />
         </svg>
+        {/* Después de las olas: si quedara detrás, su transparencia teñiría el sol. */}
+        <div
+          aria-hidden
+          className="absolute -top-12 -right-10 size-32 rounded-full bg-sol-400 sm:-top-20 sm:-right-8 sm:size-56"
+        />
         <div className="relative max-w-xl">
           <p className="text-sm font-medium text-marca-200">{sesion.rol?.name ?? "Sin rol asignado"}</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Hola, {primerNombre}</h1>
