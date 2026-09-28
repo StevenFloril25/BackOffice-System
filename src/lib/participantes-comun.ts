@@ -1,8 +1,5 @@
 /** Tipos y utilidades de participantes que usan tanto el servidor como el navegador. */
 
-export const ESTADOS_INSCRIPCION = ["Aprobado", "Pendiente de aprobación", "Cancelado"] as const;
-export type EstadoInscripcion = (typeof ESTADOS_INSCRIPCION)[number];
-
 export const TALLAS = ["XS (unisex)", "S (unisex)", "M (unisex)", "L (unisex)", "XL (unisex)", "2XL (unisex)"];
 
 export interface BarrioResumen {
@@ -29,7 +26,6 @@ export interface Participante {
   contacto2_telefono: string | null;
   edad_inscripcion: number | null;
   fecha_inscripcion: string | null;
-  estado_inscripcion: EstadoInscripcion;
   tipo: string;
   barrio_id: string | null;
   foto_path: string | null;
@@ -90,9 +86,3 @@ export function claveParticipante(nombres: string, apellidos: string, fechaNacim
       .trim();
   return `${n(nombres)}|${n(apellidos)}|${fechaNacimiento ?? ""}`;
 }
-
-export const TONO_ESTADO: Record<EstadoInscripcion, "hoja" | "sol" | "rojo"> = {
-  Aprobado: "hoja",
-  "Pendiente de aprobación": "sol",
-  Cancelado: "rojo",
-};

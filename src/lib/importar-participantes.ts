@@ -2,7 +2,7 @@ import "server-only";
 
 import ExcelJS from "exceljs";
 
-import { claveParticipante, ESTADOS_INSCRIPCION, type EstadoInscripcion, type Salud } from "@/lib/participantes";
+import { claveParticipante, type Salud } from "@/lib/participantes";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -12,10 +12,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *  - Las columnas se reconocen por su título, no por su posición: si el
  *    sistema de inscripción agrega o mueve una columna, la importación sigue.
  *  - Los adjuntos (RUI, permiso médico, foto) no se importan.
+ *  - Las inscripciones canceladas no se cargan: esa persona no viene. Del
+ *    estado de la inscripción no se guarda nada más.
  *  - La misma persona (nombres + apellidos + nacimiento) se actualiza en vez de
- *    duplicarse. Si viene dos veces en el mismo archivo (se inscribió, canceló
- *    y volvió a inscribirse), gana la inscripción vigente y, a igualdad, la más
- *    reciente.
+ *    duplicarse. Si viene dos veces en el mismo archivo, gana la más reciente.
  *  - Nunca toca lo que se gestiona aquí: foto, QR ni asistencia.
  *  - Un barrio nuevo se crea con el obispo del Excel; uno existente solo recibe
  *    los datos del obispo que le falten (no pisa lo que se corrigió a mano).
@@ -71,6 +71,9 @@ export interface ResumenImportacion {
   nuevos: number;
   actualizados: number;
   duplicadosEnArchivo: number;
+  canceladas: number;
+  /** Ya estaban en la lista y ahora el Excel las trae canceladas: revisar a mano. */
+  canceladasEnLista: string[];
   barriosNuevos: number;
   omitidas: { fila: number; motivo: string }[];
 }
@@ -118,10 +121,7 @@ function momentoISO(v: ExcelJS.CellValue): string | null {
   return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}T${pad(+m[4])}:${m[5]}:${m[6] ?? "00"}-05:00`;
 }
 
-function estado(t: string): EstadoInscripcion {
-  const n = normalizar(t);
-  return ESTADOS_INSCRIPCION.find((e) => normalizar(e) === n) ?? "Pendiente de aprobación";
-}
+const esCancelada = (estado: string | null) => normalizar(estado ?? "") === "cancelado";
 
 /**
  * El sistema de inscripción exporta los barrios en inglés ("Eden Ward",
@@ -161,7 +161,17 @@ export async function importarParticipantes(archivo: Blob): Promise<ResumenImpor
   const faltan = (["nombres", "apellidos", "barrio"] as Campo[]).filter((c) => ![...mapa.values()].includes(c));
   if (faltan.length) throw new Error(`Al archivo le faltan columnas: ${faltan.join(", ")}.`);
 
-  const resumen: ResumenImportacion = { filas: 0, nuevos: 0, actualizados: 0, duplicadosEnArchivo: 0, barriosNuevos: 0, omitidas: [] };
+  const resumen: ResumenImportacion = {
+    filas: 0,
+    nuevos: 0,
+    actualizados: 0,
+    duplicadosEnArchivo: 0,
+    canceladas: 0,
+    canceladasEnLista: [],
+    barriosNuevos: 0,
+    omitidas: [],
+  };
+  const canceladas: { clave: string; nombre: string }[] = [];
 
   type Fila = Record<Campo, string | null> & { _fila: number; _clave: string };
   const porClave = new Map<string, Fila>();
@@ -192,15 +202,15 @@ export async function importarParticipantes(archivo: Blob): Promise<ResumenImpor
     }
     r.barrio = nombreBarrio(r.barrio);
     r._clave = claveParticipante(r.nombres, r.apellidos, r.fecha_nacimiento);
+    if (esCancelada(r.estado_inscripcion)) {
+      resumen.canceladas++;
+      canceladas.push({ clave: r._clave, nombre: `${r.nombres} ${r.apellidos}` });
+      return;
+    }
     const previa = porClave.get(r._clave);
     if (previa) {
       resumen.duplicadosEnArchivo++;
-      const vigente = (x: Fila) => (estado(x.estado_inscripcion ?? "") === "Cancelado" ? 0 : 1);
-      const gana =
-        vigente(r) !== vigente(previa)
-          ? vigente(r) > vigente(previa)
-          : (r.fecha_inscripcion ?? "") > (previa.fecha_inscripcion ?? "");
-      if (!gana) return;
+      if ((r.fecha_inscripcion ?? "") <= (previa.fecha_inscripcion ?? "")) return;
     }
     porClave.set(r._clave, r);
   });
@@ -251,6 +261,11 @@ export async function importarParticipantes(archivo: Blob): Promise<ResumenImpor
   // --- Participantes ------------------------------------------------------
   const { data: yaEstan } = await admin.from("participantes").select("clave_importacion").not("clave_importacion", "is", null);
   const conocidas = new Set((yaEstan ?? []).map((x) => x.clave_importacion as string));
+  // Canceladas que ya estaban cargadas (y que no volvieron a inscribirse en el
+  // mismo archivo): no se borran solas, se avisan.
+  resumen.canceladasEnLista = canceladas
+    .filter((c) => conocidas.has(c.clave) && !porClave.has(c.clave))
+    .map((c) => c.nombre);
 
   const registros = filas.map((f) => {
     const sexo = f.sexo === "Hombre" || f.sexo === "Mujer" ? f.sexo : null;
@@ -274,7 +289,6 @@ export async function importarParticipantes(archivo: Blob): Promise<ResumenImpor
       contacto2_telefono: f.contacto2_telefono,
       edad_inscripcion: Number.isFinite(edadNum) ? edadNum : null,
       fecha_inscripcion: f.fecha_inscripcion,
-      estado_inscripcion: estado(f.estado_inscripcion ?? ""),
       tipo: f.tipo ?? "Participante",
       barrio_id: barrioId.get(claveBarrio(f.estaca ?? "", f.barrio ?? ""))!,
     };

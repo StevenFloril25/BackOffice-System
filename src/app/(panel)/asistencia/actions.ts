@@ -7,7 +7,7 @@ import { validarPermiso } from "@/lib/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { tokenDeQr } from "@/lib/token-qr";
 
-export type EstadoLectura = "registrado" | "ya_registrado" | "cancelado" | "no_encontrado" | "no_valido" | "error";
+export type EstadoLectura = "registrado" | "ya_registrado" | "no_encontrado" | "no_valido" | "error";
 
 export interface ResultadoLectura {
   estado: EstadoLectura;
@@ -18,7 +18,6 @@ export interface ResultadoLectura {
     apellidos: string;
     nombre_preferido: string;
     sexo: string | null;
-    estado_inscripcion: string;
     talla_camiseta: string | null;
     asistio_at: string | null;
     registrado_por: string | null;
@@ -30,7 +29,7 @@ export interface ResultadoLectura {
 
 /**
  * Registra la llegada a partir de lo que leyó la cámara. Toda la decisión
- * (¿existe?, ¿ya llegó?, ¿está cancelado?) la toma registrar_asistencia en la
+ * (¿existe?, ¿ya llegó?) la toma registrar_asistencia en la
  * base, en una sola operación: dos lectores escaneando el mismo QR a la vez no
  * duplican nada.
  */
@@ -58,7 +57,6 @@ export async function registrarPorQr(texto: string): Promise<ResultadoLectura> {
       apellidos: p.apellidos as string,
       nombre_preferido: (p.nombre_preferido as string) ?? "",
       sexo: (p.sexo as string) ?? null,
-      estado_inscripcion: p.estado_inscripcion as string,
       talla_camiseta: (p.talla_camiseta as string) ?? null,
       asistio_at: (p.asistio_at as string) ?? null,
       registrado_por: (p.registrado_por as string) ?? null,
@@ -69,7 +67,7 @@ export async function registrarPorQr(texto: string): Promise<ResultadoLectura> {
   };
 }
 
-/** Registro manual: búsqueda por nombre, o una inscripción cancelada que sí vino. */
+/** Registro manual: búsqueda por nombre para quien no trae su QR. */
 export async function registrarManual(id: string): Promise<{ ok?: string; error?: string; asistio_at?: string }> {
   const permiso = await validarPermiso("asistencia.registrar");
   if (!permiso.ok) return { error: permiso.error };

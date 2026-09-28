@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 
 import { Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
-import { Alerta, EncabezadoPagina, EncabezadoTarjeta, Insignia, Tarjeta } from "@/components/ui";
+import { Alerta, EncabezadoPagina, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { urlFoto } from "@/lib/fotos";
 import { qrSvg, urlAsistencia } from "@/lib/qr";
-import { CAMPOS_SALUD, TONO_ESTADO, edad, listarBarriosOpciones, nombreCompleto, obtenerParticipante } from "@/lib/participantes";
+import { CAMPOS_SALUD, edad, listarBarriosOpciones, nombreCompleto, obtenerParticipante } from "@/lib/participantes";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { FormularioParticipante } from "../formulario";
@@ -59,7 +59,6 @@ export default async function FichaParticipante({
     correo: p.correo ?? "",
     talla_camiseta: p.talla_camiseta ?? "",
     barrio_id: p.barrio_id ?? "",
-    estado_inscripcion: p.estado_inscripcion,
     contacto1_nombre: p.contacto1_nombre ?? "",
     contacto1_correo: p.contacto1_correo ?? "",
     contacto1_telefono: p.contacto1_telefono ?? "",
@@ -78,7 +77,6 @@ export default async function FichaParticipante({
         titulo={nombreCompleto(p)}
         descripcion={
           <span className="flex flex-wrap items-center gap-2">
-            <Insignia tono={TONO_ESTADO[p.estado_inscripcion]}>{p.estado_inscripcion}</Insignia>
             {p.barrio && (
               <span>
                 {p.barrio.nombre} · {p.barrio.estaca}
@@ -92,13 +90,6 @@ export default async function FichaParticipante({
       {aviso === "creado" && (
         <div className="mb-6">
           <Alerta tipo="exito">Participante registrado.</Alerta>
-        </div>
-      )}
-      {p.estado_inscripcion === "Cancelado" && (
-        <div className="mb-6">
-          <Alerta tipo="aviso" titulo="Inscripción cancelada">
-            El lector de QR no registra su llegada automáticamente. Si asiste, márcalo a mano.
-          </Alerta>
         </div>
       )}
 
@@ -139,12 +130,12 @@ export default async function FichaParticipante({
           />
 
           <Tarjeta>
-            <EncabezadoTarjeta titulo="Inscripción" />
+            <EncabezadoTarjeta titulo="Registro" />
             <dl className="divide-y divide-slate-100 text-sm">
-              <Dato etiqueta="Fecha de inscripción">
+              <Dato etiqueta="Se registró">
                 <Fecha iso={p.fecha_inscripcion} conHora />
               </Dato>
-              <Dato etiqueta="Edad al inscribirse">{p.edad_inscripcion ?? "—"}</Dato>
+              <Dato etiqueta="Edad al registrarse">{p.edad_inscripcion ?? "—"}</Dato>
               <Dato etiqueta="Origen">{p.origen === "importacion" ? "Excel de inscripción" : "Registro manual"}</Dato>
               <Dato etiqueta="Tipo">{p.tipo}</Dato>
             </dl>

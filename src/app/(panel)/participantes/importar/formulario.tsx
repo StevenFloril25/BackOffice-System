@@ -12,7 +12,7 @@ import { importarExcel } from "../actions";
 const QUE_SE_IMPORTA = [
   "Datos personales, talla y contactos de emergencia",
   "Estaca y barrio (los barrios nuevos se crean con su obispo)",
-  "Estado de la inscripción y fecha",
+  "Fecha de registro",
   "Información médica (solo visible con el permiso de datos médicos)",
 ];
 
@@ -45,14 +45,23 @@ export function FormularioImportar() {
               <Cifra etiqueta="Nuevos" valor={r.nuevos} tono="text-hoja-700" />
               <Cifra etiqueta="Actualizados" valor={r.actualizados} tono="text-marca-700" />
               <Cifra etiqueta="Barrios nuevos" valor={r.barriosNuevos} tono="text-marca-700" />
-              <Cifra etiqueta="Repetidos en el archivo" valor={r.duplicadosEnArchivo} tono="text-sol-600" />
+              <Cifra etiqueta="Canceladas (no se cargan)" valor={r.canceladas} tono="text-sol-600" />
             </dl>
             <div className="space-y-3 px-5 py-4 text-sm sm:px-6">
               {r.duplicadosEnArchivo > 0 && (
                 <p className="text-slate-500">
-                  Las personas repetidas (se inscribieron más de una vez) quedaron con su inscripción vigente; a igualdad, con la más
-                  reciente.
+                  {r.duplicadosEnArchivo} persona(s) venían repetidas en el archivo: quedó su registro más reciente.
                 </p>
+              )}
+              {r.canceladasEnLista.length > 0 && (
+                <Alerta tipo="aviso" titulo="Ya estaban en la lista y ahora figuran canceladas">
+                  <p>No se borraron solas. Si ya no vienen, elimínalas desde su ficha:</p>
+                  <ul className="mt-1 list-disc pl-4">
+                    {r.canceladasEnLista.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                </Alerta>
               )}
               {r.omitidas.length > 0 && (
                 <Alerta tipo="aviso" titulo={`${r.omitidas.length} fila(s) sin importar`}>
@@ -155,7 +164,10 @@ export function FormularioImportar() {
         </ul>
         <div className="border-t border-slate-100 p-5 text-sm text-slate-500 sm:p-6">
           <p className="font-medium text-slate-700">No se importan</p>
-          <p className="mt-1">Los adjuntos (autorización de imagen, permiso médico y foto). La foto se sube aquí, en la ficha de cada participante.</p>
+          <p className="mt-1">
+            Las inscripciones canceladas y los adjuntos (autorización de imagen, permiso médico y foto). La foto se sube aquí, en la
+            ficha de cada participante.
+          </p>
           <p className="mt-3 font-medium text-slate-700">No se tocan</p>
           <p className="mt-1">Fotos, códigos QR ni asistencia de quienes ya estaban.</p>
         </div>

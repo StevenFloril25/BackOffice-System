@@ -7,7 +7,7 @@ import { z } from "zod";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { borrarFoto, subirFoto } from "@/lib/fotos";
 import { importarParticipantes, type ResumenImportacion } from "@/lib/importar-participantes";
-import { CAMPOS_SALUD, claveParticipante, ESTADOS_INSCRIPCION } from "@/lib/participantes";
+import { CAMPOS_SALUD, claveParticipante } from "@/lib/participantes";
 import { puede, validarPermiso } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +52,6 @@ const esquema = z.object({
   correo,
   talla_camiseta: texto(20),
   barrio_id: z.string().min(1, "Elige el barrio.").pipe(z.uuid("Barrio no válido.")),
-  estado_inscripcion: z.enum(ESTADOS_INSCRIPCION),
   contacto1_nombre: texto(120),
   contacto1_correo: correo,
   contacto1_telefono: telefono,

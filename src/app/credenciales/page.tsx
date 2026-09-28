@@ -24,7 +24,7 @@ const POR_HOJA = 8;
 export default async function Credenciales({
   searchParams,
 }: {
-  searchParams: Promise<{ barrio?: string; estaca?: string; id?: string; canceladas?: string }>;
+  searchParams: Promise<{ barrio?: string; estaca?: string; id?: string }>;
 }) {
   const sesion = await exigirSesion();
   if (!puede(sesion, "participantes.ver")) {
@@ -41,7 +41,6 @@ export default async function Credenciales({
     .filter((p) => (f.id ? p.id === f.id : true))
     .filter((p) => (f.barrio ? p.barrio_id === f.barrio : true))
     .filter((p) => (f.estaca ? p.barrio?.estaca === f.estaca : true))
-    .filter((p) => (f.id || f.canceladas ? true : p.estado_inscripcion !== "Cancelado"))
     .sort(
       (a, b) =>
         (a.barrio?.estaca ?? "").localeCompare(b.barrio?.estaca ?? "") ||

@@ -5,7 +5,7 @@ import { useActionState, useMemo, useState } from "react";
 
 import { BotonEnviar } from "@/components/cliente";
 import { Alerta, Campo, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
-import { CAMPOS_SALUD, ESTADOS_INSCRIPCION, TALLAS, type BarrioResumen } from "@/lib/participantes-comun";
+import { CAMPOS_SALUD, TALLAS, type BarrioResumen } from "@/lib/participantes-comun";
 import { DialogoBarrio } from "../barrios/dialogo-barrio";
 import { actualizarParticipante, crearParticipante, type EstadoParticipante } from "./actions";
 
@@ -86,8 +86,8 @@ export function FormularioParticipante({ id, inicial, barrios: barriosIniciales,
           </Tarjeta>
 
           <Tarjeta>
-            <EncabezadoTarjeta titulo="Barrio e inscripción" />
-            <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+            <EncabezadoTarjeta titulo="Barrio" />
+            <div className="p-5 sm:p-6">
               <Campo etiqueta="Barrio o rama" htmlFor="barrio_id" error={err.barrio_id}>
                 <div className="flex gap-2">
                   <select
@@ -123,15 +123,6 @@ export function FormularioParticipante({ id, inicial, barrios: barriosIniciales,
                     </button>
                   )}
                 </div>
-              </Campo>
-              <Campo etiqueta="Estado de la inscripción" htmlFor="estado_inscripcion" error={err.estado_inscripcion}>
-                <select id="estado_inscripcion" name="estado_inscripcion" defaultValue={val.estado_inscripcion} className="entrada">
-                  {ESTADOS_INSCRIPCION.map((e) => (
-                    <option key={e} value={e}>
-                      {e}
-                    </option>
-                  ))}
-                </select>
               </Campo>
             </div>
           </Tarjeta>

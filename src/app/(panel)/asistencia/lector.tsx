@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { AlertTriangle, Camera, CameraOff, CheckCircle2, Loader2, RotateCcw, Search, UserCheck, XCircle } from "lucide-react";
+import { Camera, CameraOff, CheckCircle2, Loader2, RotateCcw, Search, UserCheck, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -16,7 +16,6 @@ export interface Persona {
   nombre: string;
   preferido: string;
   barrio: string;
-  cancelado: boolean;
   asistio_at: string | null;
 }
 
@@ -67,7 +66,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
   const ultimo = useRef<{ texto: string; t: number }>({ texto: "", t: 0 });
   const ocupado = useRef(false);
 
-  const vigentes = personas.filter((p) => !p.cancelado).length;
+  const vigentes = personas.length;
   const llegaron = personas.filter((p) => p.asistio_at).length;
 
   const anotar = useCallback((r: ResultadoLectura) => {
@@ -93,7 +92,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
         const r = await registrarPorQr(texto);
         setResultado(r);
         anotar(r);
-        sonar(r.estado === "registrado" ? "ok" : r.estado === "ya_registrado" || r.estado === "cancelado" ? "aviso" : "error");
+        sonar(r.estado === "registrado" ? "ok" : r.estado === "ya_registrado" ? "aviso" : "error");
       } catch {
         setResultado({ estado: "error", mensaje: "Sin conexión. Vuelve a intentar." });
         sonar("error");
@@ -178,7 +177,6 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
           apellidos: "",
           nombre_preferido: p.preferido,
           sexo: null,
-          estado_inscripcion: p.cancelado ? "Cancelado" : "",
           talla_camiseta: null,
           asistio_at: hora,
           registrado_por: null,
@@ -249,7 +247,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
 
       {/* Resultado, búsqueda y últimos */}
       <div className="space-y-4 lg:col-span-2">
-        <PanelResultado resultado={resultado} alForzar={(id) => marcarManual({ id, nombre: nombreDe(resultado), preferido: "", barrio: resultado?.participante?.barrio ?? "", cancelado: true, asistio_at: null })} forzando={pendienteManual} />
+        <PanelResultado resultado={resultado} />
 
         <Tarjeta>
           <div className="border-b border-slate-100 p-4">
@@ -275,10 +273,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
                 <li key={p.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900">{p.nombre}</p>
-                    <p className="truncate text-xs text-slate-500">
-                      {p.barrio}
-                      {p.cancelado && " · inscripción cancelada"}
-                    </p>
+                    <p className="truncate text-xs text-slate-500">{p.barrio}</p>
                   </div>
                   {p.asistio_at ? (
                     <Insignia tono="hoja" punto>
@@ -324,11 +319,6 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
   );
 }
 
-function nombreDe(r: ResultadoLectura | null) {
-  const p = r?.participante;
-  return p ? `${p.nombres} ${p.apellidos}`.trim() : "";
-}
-
 function Contador({ llegaron, vigentes }: { llegaron: number; vigentes: number }) {
   const pct = vigentes ? Math.round((llegaron / vigentes) * 100) : 0;
   return (
@@ -351,21 +341,12 @@ function Contador({ llegaron, vigentes }: { llegaron: number; vigentes: number }
 const ESTILOS: Record<string, { clase: string; Icono: typeof CheckCircle2; titulo: string }> = {
   registrado: { clase: "bg-hoja-100 border-hoja-200 text-hoja-700", Icono: CheckCircle2, titulo: "¡Bienvenido! Llegada registrada" },
   ya_registrado: { clase: "bg-sol-100 border-sol-200 text-sol-600", Icono: RotateCcw, titulo: "Ya estaba registrado" },
-  cancelado: { clase: "bg-orange-50 border-orange-200 text-orange-700", Icono: AlertTriangle, titulo: "Inscripción cancelada" },
   no_encontrado: { clase: "bg-red-50 border-red-200 text-red-700", Icono: XCircle, titulo: "QR no reconocido" },
   no_valido: { clase: "bg-red-50 border-red-200 text-red-700", Icono: XCircle, titulo: "Ese código no es de la conferencia" },
   error: { clase: "bg-red-50 border-red-200 text-red-700", Icono: XCircle, titulo: "No se pudo registrar" },
 };
 
-function PanelResultado({
-  resultado,
-  alForzar,
-  forzando,
-}: {
-  resultado: ResultadoLectura | null;
-  alForzar: (id: string) => void;
-  forzando: boolean;
-}) {
+function PanelResultado({ resultado }: { resultado: ResultadoLectura | null }) {
   if (!resultado) {
     return (
       <Tarjeta className="flex items-center gap-3 p-5 text-sm text-slate-500">
@@ -408,18 +389,10 @@ function PanelResultado({
                 {p.registrado_por && ` · registró ${p.registrado_por}`}
               </p>
             )}
-            {p.estado_inscripcion === "Pendiente de aprobación" && resultado.estado === "registrado" && (
-              <p className="mt-1 text-xs font-medium text-sol-600">Ojo: su inscripción sigue pendiente de aprobación.</p>
-            )}
           </div>
         </div>
       ) : (
         resultado.mensaje && <p className="mt-2 text-sm">{resultado.mensaje}</p>
-      )}
-      {resultado.estado === "cancelado" && p && (
-        <button type="button" disabled={forzando} onClick={() => alForzar(p.id)} className={clsx(claseBoton("secundario", "sm"), "mt-4")}>
-          Vino igual: registrar llegada
-        </button>
       )}
     </div>
   );

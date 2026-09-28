@@ -23,7 +23,7 @@ export default async function NuevoParticipante() {
       />
       <FormularioParticipante
         id={null}
-        inicial={{ estado_inscripcion: "Aprobado" }}
+        inicial={{}}
         barrios={barrios}
         editable
         verSalud={puede(sesion, "participantes.salud")}

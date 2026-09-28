@@ -7,8 +7,6 @@ import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, Avatar, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, Tarjeta, claseBoton } from "@/components/ui";
 import { urlsFotos } from "@/lib/fotos";
 import {
-  ESTADOS_INSCRIPCION,
-  TONO_ESTADO,
   edad,
   listarBarriosOpciones,
   listarParticipantes,
@@ -18,7 +16,7 @@ import { exigirSesion, puede } from "@/lib/sesion";
 
 export const metadata: Metadata = { title: "Participantes" };
 
-type Filtros = { q?: string; barrio?: string; estaca?: string; estado?: string; asistencia?: string; sexo?: string; aviso?: string };
+type Filtros = { q?: string; barrio?: string; estaca?: string; asistencia?: string; sexo?: string; aviso?: string };
 
 const sinTildes = (t: string) => t.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
@@ -40,18 +38,17 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
     }
     if (f.barrio && p.barrio_id !== f.barrio) return false;
     if (f.estaca && p.barrio?.estaca !== f.estaca) return false;
-    if (f.estado && p.estado_inscripcion !== f.estado) return false;
     if (f.sexo && p.sexo !== f.sexo) return false;
     if (f.asistencia === "si" && !p.asistio_at) return false;
     if (f.asistencia === "no" && p.asistio_at) return false;
     return true;
   });
-  const hayFiltros = Boolean(texto || f.barrio || f.estaca || f.estado || f.sexo || f.asistencia);
+  const hayFiltros = Boolean(texto || f.barrio || f.estaca || f.sexo || f.asistencia);
   const fotos = await urlsFotos(lista.map((p) => p.foto_path));
 
-  const cuenta = (e: string) => todos.filter((p) => p.estado_inscripcion === e).length;
   const llegaron = todos.filter((p) => p.asistio_at).length;
-  const vigentes = todos.filter((p) => p.estado_inscripcion !== "Cancelado").length;
+  const mujeres = todos.filter((p) => p.sexo === "Mujer").length;
+  const hombres = todos.filter((p) => p.sexo === "Hombre").length;
 
   return (
     <>
@@ -91,14 +88,14 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <Indicador etiqueta="Inscritos" valor={todos.length} nota={`${vigentes} vigentes`} />
-        <Indicador etiqueta="Aprobados" valor={cuenta("Aprobado")} tono="hoja" href="/participantes?estado=Aprobado" />
-        <Indicador etiqueta="Pendientes de aprobación" valor={cuenta("Pendiente de aprobación")} tono="sol" href="/participantes?estado=Pendiente%20de%20aprobaci%C3%B3n" />
-        <Indicador etiqueta="Llegaron" valor={llegaron} nota={vigentes ? `${Math.round((llegaron / vigentes) * 100)}% de los vigentes` : undefined} href="/participantes?asistencia=si" />
+        <Indicador etiqueta="Participantes" valor={todos.length} nota={`${barrios.length} barrios`} />
+        <Indicador etiqueta="Mujeres" valor={mujeres} href="/participantes?sexo=Mujer" />
+        <Indicador etiqueta="Hombres" valor={hombres} href="/participantes?sexo=Hombre" />
+        <Indicador etiqueta="Llegaron" valor={llegaron} nota="Se registra el día de la conferencia" href="/participantes?asistencia=si" />
       </div>
 
       <Tarjeta>
-        <form className="grid gap-3 border-b border-slate-100 p-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]" role="search">
+        <form className="grid gap-3 border-b border-slate-100 p-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]" role="search">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <input name="q" defaultValue={f.q} placeholder="Nombre, teléfono, correo o contacto" aria-label="Buscar" className="entrada pl-10" />
@@ -115,14 +112,6 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
                     </option>
                   ))}
               </optgroup>
-            ))}
-          </select>
-          <select name="estado" defaultValue={f.estado ?? ""} aria-label="Estado de inscripción" className="entrada lg:w-44">
-            <option value="">Todo estado</option>
-            {ESTADOS_INSCRIPCION.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
             ))}
           </select>
           <select name="asistencia" defaultValue={f.asistencia ?? ""} aria-label="Asistencia" className="entrada lg:w-36">
@@ -170,7 +159,6 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
                   <tr className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
                     <th className="px-5 py-3">Participante</th>
                     <th className="px-5 py-3">Barrio</th>
-                    <th className="px-5 py-3">Inscripción</th>
                     <th className="px-5 py-3">Talla</th>
                     <th className="px-5 py-3">Llegada</th>
                     <th className="px-5 py-3" />
@@ -197,9 +185,6 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
                         <td className="px-5 py-3">
                           <span className="block font-medium text-slate-700">{p.barrio?.nombre ?? "—"}</span>
                           <span className="block text-xs text-slate-500">{p.barrio?.estaca}</span>
-                        </td>
-                        <td className="px-5 py-3">
-                          <Insignia tono={TONO_ESTADO[p.estado_inscripcion]}>{p.estado_inscripcion}</Insignia>
                         </td>
                         <td className="px-5 py-3 text-slate-600">{p.talla_camiseta?.replace(" (unisex)", "") ?? "—"}</td>
                         <td className="px-5 py-3">
@@ -235,14 +220,13 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold text-slate-900">{nombreCompleto(p)}</p>
                       <p className="truncate text-sm text-slate-500">{p.barrio?.nombre ?? "Sin barrio"}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        <Insignia tono={TONO_ESTADO[p.estado_inscripcion]}>{p.estado_inscripcion}</Insignia>
-                        {p.asistio_at && (
+                      {p.asistio_at && (
+                        <div className="mt-1.5">
                           <Insignia tono="hoja" punto>
                             Llegó
                           </Insignia>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                     <ChevronRight className="size-4 text-slate-300" aria-hidden />
                   </Link>

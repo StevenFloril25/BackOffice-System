@@ -1,11 +1,10 @@
 "use client";
 
 import { CheckCircle2, XCircle } from "lucide-react";
-import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { Fecha } from "@/components/cliente";
-import { Alerta, Boton, Tarjeta, claseBoton } from "@/components/ui";
+import { Alerta, Boton, Tarjeta } from "@/components/ui";
 import { registrarPorQr, type ResultadoLectura } from "../actions";
 
 export function ConfirmarLlegada({ token }: { token: string }) {
@@ -41,17 +40,6 @@ export function ConfirmarLlegada({ token }: { token: string }) {
           <Alerta tipo="aviso">
             Ya estaba registrado {p?.asistio_at && <Fecha iso={p.asistio_at} relativa />}.
           </Alerta>
-        </>
-      )}
-      {resultado.estado === "cancelado" && (
-        <>
-          <p className="text-lg font-bold text-slate-900">{nombre}</p>
-          <Alerta tipo="aviso">Su inscripción está cancelada. Si vino, regístralo desde su ficha.</Alerta>
-          {p && (
-            <Link href={`/participantes/${p.id}`} className={claseBoton("secundario")}>
-              Abrir ficha
-            </Link>
-          )}
         </>
       )}
       {(resultado.estado === "no_encontrado" || resultado.estado === "no_valido" || resultado.estado === "error") && (
