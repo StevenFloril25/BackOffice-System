@@ -5,11 +5,13 @@ import { Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, EncabezadoPagina, EncabezadoTarjeta, Insignia, Tarjeta } from "@/components/ui";
 import { urlFoto } from "@/lib/fotos";
+import { qrSvg, urlAsistencia } from "@/lib/qr";
 import { CAMPOS_SALUD, TONO_ESTADO, edad, listarBarriosOpciones, nombreCompleto, obtenerParticipante } from "@/lib/participantes";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { FormularioParticipante } from "../formulario";
 import { Asistencia, EliminarParticipante, FotoParticipante } from "./acciones";
+import { QrParticipante } from "./qr";
 
 export const metadata: Metadata = { title: "Participante" };
 
@@ -36,6 +38,8 @@ export default async function FichaParticipante({
   const verSalud = puede(sesion, "participantes.salud");
   const editable = puede(sesion, "participantes.editar");
   const foto = await urlFoto(p.foto_path);
+  const contenidoQr = await urlAsistencia(p.qr_token);
+  const svgQr = await qrSvg(contenidoQr);
 
   let registradoPor: string | null = null;
   if (p.asistio_at) {
@@ -123,6 +127,15 @@ export default async function FichaParticipante({
             asistioAt={p.asistio_at}
             registradoPor={registradoPor}
             puedeRegistrar={puede(sesion, "asistencia.registrar")}
+          />
+
+          <QrParticipante
+            id={p.id}
+            contenido={contenidoQr}
+            svg={svgQr}
+            nombre={p.nombre_preferido || nombreCompleto(p)}
+            barrio={p.barrio?.nombre ?? ""}
+            estaca={p.barrio?.estaca ?? ""}
           />
 
           <Tarjeta>

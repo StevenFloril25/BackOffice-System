@@ -26,6 +26,7 @@ export const MENU: SeccionMenu[] = [
     titulo: "Conferencia",
     items: [
       { href: "/participantes", etiqueta: "Participantes", icono: "id-card", permiso: "participantes.ver" },
+      { href: "/asistencia", etiqueta: "Registro de asistencia", icono: "scan-line", permiso: "asistencia.registrar" },
       { href: "/barrios", etiqueta: "Barrios", icono: "church", permiso: "barrios.ver" },
     ],
   },

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, FileSpreadsheet, IdCard, Search, UserPlus } from "lucide-react";
+import { ChevronRight, FileSpreadsheet, IdCard, Printer, Search, UserPlus } from "lucide-react";
 
 import { Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
@@ -60,6 +60,14 @@ export default async function PaginaParticipantes({ searchParams }: { searchPara
         descripcion="Jóvenes inscritos en la sesión. La lista se carga desde el Excel de inscripción y se puede actualizar cuantas veces haga falta."
         acciones={
           <>
+            <EnlaceBoton
+              href={`/credenciales?${new URLSearchParams({ ...(f.barrio ? { barrio: f.barrio } : {}), ...(f.estaca ? { estaca: f.estaca } : {}) })}`}
+              target="_blank"
+              variante="secundario"
+            >
+              <Printer className="size-4" aria-hidden />
+              Credenciales
+            </EnlaceBoton>
             {puede(sesion, "participantes.importar") && (
               <EnlaceBoton href="/participantes/importar" variante="secundario">
                 <FileSpreadsheet className="size-4" aria-hidden />
