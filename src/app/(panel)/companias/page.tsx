@@ -13,11 +13,11 @@ import { AccionesCompanias } from "./dialogos";
 
 export const metadata: Metadata = { title: "Compañías" };
 
-export default async function PaginaCompanias({ searchParams }: { searchParams: Promise<{ aviso?: string; n?: string }> }) {
+export default async function PaginaCompanias({ searchParams }: { searchParams: Promise<{ aviso?: string; n?: string; c?: string }> }) {
   const sesion = await exigirSesion();
   if (!puede(sesion, "companias.ver")) return <SinAcceso permiso="companias.ver" />;
 
-  const { aviso, n } = await searchParams;
+  const { aviso, n, c: creadas } = await searchParams;
   const [companias, resumen] = await Promise.all([listarCompanias(), resumenPorCompania()]);
   const fotos = await urlsFotos(companias.flatMap((c) => [c.consejero?.foto_path, c.consejera?.foto_path]));
   const conCoordinador = companias.filter((c) => c.coordinadores.length > 0).length;
@@ -32,7 +32,7 @@ export default async function PaginaCompanias({ searchParams }: { searchParams: 
         descripcion="Cada compañía tiene un consejero y una consejera y un grupo de jóvenes. Los jóvenes se reparten después, por edades."
         acciones={
           <>
-            {puede(sesion, "companias.editar") && companias.length > 0 && (
+            {puede(sesion, "companias.editar") && (companias.length > 0 || puede(sesion, "companias.crear")) && (
               <EnlaceBoton href="/companias/distribuir" variante="secundario">
                 <Wand2 className="size-4" aria-hidden />
                 Repartir jóvenes
@@ -44,7 +44,11 @@ export default async function PaginaCompanias({ searchParams }: { searchParams: 
       />
 
       {aviso === "repartidos" && (
-        <AvisoBreve titulo="Reparto aplicado" detalle={`${Number(n) || 0} jóvenes asignados a sus compañías.`} quitarDeUrl={["aviso", "n"]} />
+        <AvisoBreve
+          titulo="Reparto aplicado"
+          detalle={`${Number(n) || 0} jóvenes asignados${Number(creadas) ? ` y ${Number(creadas)} compañías nuevas` : " a sus compañías"}.`}
+          quitarDeUrl={["aviso", "n", "c"]}
+        />
       )}
 
       {aviso === "eliminada" && (

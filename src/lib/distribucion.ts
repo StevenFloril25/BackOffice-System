@@ -46,6 +46,8 @@ export interface CompaniaParaRepartir {
   id: string;
   numero: number;
   nombre: string;
+  /** Todavía no existe: se crea al aplicar el reparto. */
+  nueva?: boolean;
 }
 
 export interface MiembroPropuesto {
@@ -72,7 +74,10 @@ export interface CompaniaPropuesta {
 }
 
 export interface PropuestaCompanias {
-  asignaciones: { id: string; compania_id: string }[];
+  /** Por número de compañía: las nuevas todavía no tienen id. */
+  asignaciones: { id: string; numero: number }[];
+  /** Números de las compañías que se crean al aplicar. */
+  crear: number[];
   companias: CompaniaPropuesta[];
   /** Sin sexo indicado: no se pueden equilibrar, quedan fuera del reparto. */
   sinSexo: number;
@@ -178,16 +183,109 @@ export function proponerCompanias(
     };
   });
 
-  const asignaciones = [...destino.entries()]
-    .map(([id, compania_id]) => ({ id, compania_id }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+  const numeroDe = new Map(orden.map((c) => [c.id, c.numero]));
   const actual = new Map(jovenes.map((j) => [j.id, j.compania_id]));
+  const cambios = [...destino.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const asignaciones = cambios.map(([id, compania]) => ({ id, numero: numeroDe.get(compania)! }));
+  const crear = orden.filter((c) => c.nueva).map((c) => c.numero);
   return {
     asignaciones,
+    crear,
     companias: propuesta,
     sinSexo,
-    cambian: asignaciones.filter((a) => actual.get(a.id) && actual.get(a.id) !== a.compania_id).length,
-    huella: huellaDe(`c|${modo}|${alcance}|` + asignaciones.map((a) => `${a.id}:${a.compania_id}`).join(";")),
+    cambian: cambios.filter(([id, compania]) => actual.get(id) && actual.get(id) !== compania).length,
+    huella: huellaDe(
+      `c|${modo}|${alcance}|${crear.join(",")}|` + asignaciones.map((a) => `${a.id}:${a.numero}`).join(";"),
+    ),
+  };
+}
+
+/**
+ * Las compañías del reparto: las que ya existen, en orden, y las que falten
+ * para llegar a `cantidad`, con los números libres más bajos. Al completar (sin
+ * rehacer), una compañía que ya tiene jóvenes se usa aunque sobre: no se la deja
+ * fuera con su gente adentro.
+ */
+export function companiasParaReparto(
+  existentes: (CompaniaParaRepartir & { jovenes: number })[],
+  cantidad: number,
+  alcance: Alcance,
+): CompaniaParaRepartir[] {
+  const orden = [...existentes].sort((a, b) => a.numero - b.numero);
+  const usadas: CompaniaParaRepartir[] = orden.slice(0, cantidad).map(({ id, numero, nombre }) => ({ id, numero, nombre }));
+  if (alcance === "faltantes") {
+    for (const c of orden.slice(cantidad)) if (c.jovenes > 0) usadas.push({ id: c.id, numero: c.numero, nombre: c.nombre });
+  }
+  const tomados = new Set(orden.map((c) => c.numero));
+  for (let n = 1; usadas.length < cantidad && n <= 999; n++) {
+    if (!tomados.has(n)) usadas.push({ id: `nueva:${n}`, numero: n, nombre: "", nueva: true });
+  }
+  return usadas.sort((a, b) => a.numero - b.numero);
+}
+
+/** Cuántas compañías salen para un tamaño: la cantidad que más se acerca a ese tamaño. */
+export function cantidadPara(tamano: number, jovenes: number): number {
+  return Math.max(1, Math.round(jovenes / Math.max(1, tamano)));
+}
+
+export interface Alternativa {
+  companias: number;
+  /** Cuántas habría que crear. */
+  nuevas: number;
+  /** [mínimo, máximo] de jóvenes por compañía. */
+  porCompania: [number, number];
+  mujeres: [number, number];
+  hombres: [number, number];
+  /** Pisos que ocuparían, cada compañía junta; null si alguna no cabe en un piso. */
+  pisosMujeres: number | null;
+  pisosHombres: number | null;
+}
+
+/** n repartidos en k partes parejas; lo que sobra, a las primeras o a las últimas (como el reparto). */
+function partes(n: number, k: number, alFinal: boolean): number[] {
+  const base = Math.floor(n / k);
+  const resto = n % k;
+  return Array.from({ length: k }, (_, i) => base + ((alFinal ? i >= k - resto : i < resto) ? 1 : 0));
+}
+
+const rango = (xs: number[]): [number, number] => [Math.min(...xs), Math.max(...xs)];
+
+/** Pisos que ocupan grupos de estos tamaños, cada uno en el primer piso con lugar para todos (como proponerCamas). */
+export function pisosNecesarios(grupos: number[], pisos: number[]): number | null {
+  const libres = [...pisos];
+  const usados = new Set<number>();
+  for (const g of grupos) {
+    if (g === 0) continue;
+    const i = libres.findIndex((l) => l >= g);
+    if (i < 0) return null;
+    libres[i] -= g;
+    usados.add(i);
+  }
+  return usados.size;
+}
+
+/**
+ * Cómo quedaría el reparto con k compañías: jóvenes por compañía, mujeres y
+ * hombres en cada una y cuántos pisos ocuparían. `pisos` son las camas de
+ * jóvenes de cada piso, en el orden en que se llenan.
+ */
+export function alternativa(
+  k: number,
+  mujeres: number,
+  hombres: number,
+  existentes: number,
+  pisos: { mujeres: number[]; hombres: number[] },
+): Alternativa {
+  const m = partes(mujeres, k, false);
+  const h = partes(hombres, k, true);
+  return {
+    companias: k,
+    nuevas: Math.max(0, k - existentes),
+    porCompania: rango(m.map((x, i) => x + h[i])),
+    mujeres: rango(m),
+    hombres: rango(h),
+    pisosMujeres: pisosNecesarios(m, pisos.mujeres),
+    pisosHombres: pisosNecesarios(h, pisos.hombres),
   };
 }
 

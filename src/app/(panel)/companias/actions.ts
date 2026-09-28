@@ -5,10 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
-import { leerAlcance, leerModo, propuestaCompanias } from "@/lib/distribucion-datos";
+import { leerEleccion, propuestaCompanias } from "@/lib/distribucion-datos";
 import { mensajeBd } from "@/lib/errores";
 import { nombreCompania } from "@/lib/organizacion-comun";
-import { validarPermiso } from "@/lib/sesion";
+import { puede, validarPermiso } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { erroresDe, leerCampos, textoOpcional } from "@/lib/validacion";
@@ -287,34 +287,39 @@ export async function quitarJoven(companiaId: string, participanteId: string): P
 /**
  * Aplica el reparto sugerido. Se vuelve a calcular con los datos de ahora y
  * solo se aplica si sale igual al que se vio: si alguien asignó o registró
- * jóvenes entretanto, la propuesta ya es otra y hay que mirarla de nuevo.
+ * jóvenes entretanto, la propuesta ya es otra y hay que mirarla de nuevo. Las
+ * compañías que faltan se crean en el mismo paso.
  */
-export async function aplicarReparto(modo: string, alcance: string, huella: string): Promise<EstadoCompania> {
+export async function aplicarReparto(
+  parametros: { edades?: string; alcance?: string; tamano?: string; companias?: string },
+  huella: string,
+): Promise<EstadoCompania> {
   const permiso = await validarPermiso("companias.editar");
   if (!permiso.ok) return { error: permiso.error };
 
-  const edades = leerModo(modo);
-  const cuales = leerAlcance(alcance);
-  const { propuesta } = await propuestaCompanias(edades, cuales);
+  const eleccion = leerEleccion(parametros);
+  const { propuesta } = await propuestaCompanias(eleccion, puede(permiso.sesion, "companias.crear"));
   if (propuesta.huella !== huella) {
     revalidatePath("/companias/distribuir");
-    return { error: "Algo cambió mientras mirabas la propuesta (alguien asignó o registró jóvenes). Ya se actualizó: revísala y vuelve a aplicar." };
+    return { error: "Algo cambió mientras mirabas la propuesta (alguien asignó o registró jóvenes, o creó compañías). Ya se actualizó: revísala y vuelve a aplicar." };
   }
   if (propuesta.asignaciones.length === 0) return { error: "No hay jóvenes para repartir." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("aplicar_companias", {
+  const { data, error } = await supabase.rpc("aplicar_reparto", {
     p_asignaciones: propuesta.asignaciones,
-    p_rehacer: cuales === "rehacer",
+    p_crear: propuesta.crear,
+    p_rehacer: eleccion.alcance === "rehacer",
   });
   if (error) return { error: mensajeBd(error, "No se pudo aplicar el reparto. No se cambió nada.") };
 
   const n = (data as number | null) ?? 0;
+  const creadas = propuesta.crear.length;
   await registrarAuditoria(permiso.sesion, {
     accion: "compania.reparto",
     entidad: "compania",
-    resumen: `Repartió automáticamente ${n} ${n === 1 ? "joven" : "jóvenes"} en ${propuesta.companias.length} compañías (${edades === "agrupar" ? "edades parecidas" : "edades mezcladas"}${cuales === "rehacer" ? ", rehaciendo todas" : ""})`,
+    resumen: `Repartió automáticamente ${n} ${n === 1 ? "joven" : "jóvenes"} en ${propuesta.companias.length} compañías${creadas ? ` (creó ${creadas === 1 ? "la compañía" : "las compañías"} ${propuesta.crear.join(", ")})` : ""}; ${eleccion.modo === "agrupar" ? "edades parecidas" : "edades mezcladas"}${eleccion.alcance === "rehacer" ? ", rehaciendo todas" : ""}`,
   });
   refrescar();
-  redirect(`/companias?aviso=repartidos&n=${n}`);
+  redirect(`/companias?aviso=repartidos&n=${n}&c=${creadas}`);
 }

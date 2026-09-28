@@ -1,6 +1,9 @@
 import "server-only";
 
 import {
+  alternativa,
+  cantidadPara,
+  companiasParaReparto,
   proponerCamas,
   proponerCompanias,
   type Alcance,
@@ -35,11 +38,54 @@ async function companias(): Promise<(CompaniaParaRepartir & { consejero_id: stri
   return data ?? [];
 }
 
-export async function propuestaCompanias(modo: ModoEdades, alcance: Alcance) {
+/** Tamaño de compañía por defecto: 10 mujeres y 10 hombres. */
+export const TAMANO_INICIAL = 20;
+
+/** Lo que se eligió en la página: el tamaño de cada compañía o, directo, cuántas. */
+export interface EleccionReparto {
+  modo: ModoEdades;
+  alcance: Alcance;
+  tamano: number;
+  /** Si se eligió una alternativa: cuántas compañías. Manda sobre el tamaño. */
+  cantidad: number | null;
+}
+
+export function leerEleccion(p: { edades?: string; alcance?: string; tamano?: string; companias?: string }): EleccionReparto {
+  const numero = (v: string | undefined, min: number, max: number) => {
+    const n = Number(v);
+    return Number.isInteger(n) && n >= min && n <= max ? n : null;
+  };
+  return {
+    modo: leerModo(p.edades),
+    alcance: leerAlcance(p.alcance),
+    tamano: numero(p.tamano, 4, 80) ?? TAMANO_INICIAL,
+    cantidad: numero(p.companias, 1, 150),
+  };
+}
+
+/** Camas de jóvenes de cada piso, por sexo, en el orden en que se llenan (como proponerCamas). */
+async function camasPorPiso(): Promise<{ mujeres: number[]; hombres: number[] }> {
   const supabase = await createClient();
-  const [lista, { data, error }] = await Promise.all([
+  const { data } = await supabase.from("edificios").select("nombre, sexo, habitaciones(piso, tipo, capacidad)");
+  const salida = { mujeres: [] as number[], hombres: [] as number[] };
+  const porNombre = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
+  for (const e of [...(data ?? [])].sort((a, b) => porNombre.compare(a.nombre, b.nombre))) {
+    const pisos = new Map<number, number>();
+    for (const h of e.habitaciones ?? []) if (h.tipo === "jovenes") pisos.set(h.piso, (pisos.get(h.piso) ?? 0) + h.capacidad);
+    const lista = [...pisos.entries()].sort((a, b) => a[0] - b[0]).map(([, camas]) => camas);
+    (e.sexo === "Mujer" ? salida.mujeres : salida.hombres).push(...lista);
+  }
+  return salida;
+}
+
+export async function propuestaCompanias(eleccion: EleccionReparto, puedeCrear: boolean) {
+  const { modo, alcance } = eleccion;
+  const supabase = await createClient();
+  const [lista, { data, error }, pisos, consejeros] = await Promise.all([
     companias(),
     supabase.from("participantes").select("id, nombres, apellidos, sexo, fecha_nacimiento, barrio_id, compania_id, barrio:barrios(nombre)"),
+    camasPorPiso(),
+    supabase.from("consejeros").select("sexo").eq("funcion", "consejero"),
   ]);
   if (error) throw new Error(`No se pudieron cargar los participantes: ${error.message}`);
   const jovenes: JovenParaRepartir[] = (data ?? []).map((j) => ({
@@ -53,7 +99,39 @@ export async function propuestaCompanias(modo: ModoEdades, alcance: Alcance) {
     compania_id: j.compania_id,
   }));
   const sinCompania = jovenes.filter((j) => !j.compania_id).length;
-  return { propuesta: proponerCompanias(jovenes, lista, modo, alcance), total: jovenes.length, sinCompania, hayCompanias: lista.length > 0 };
+  const mujeres = jovenes.filter((j) => j.sexo === "Mujer").length;
+  const hombres = jovenes.filter((j) => j.sexo === "Hombre").length;
+  const conSexo = mujeres + hombres;
+
+  // Cuántas compañías: las elegidas, o las que da el tamaño. Sin permiso para
+  // crear, solo las que ya existen.
+  const existentes = lista.map((c) => ({ ...c, jovenes: jovenes.filter((j) => j.compania_id === c.id).length }));
+  const cantidad = puedeCrear
+    ? Math.min(eleccion.cantidad ?? cantidadPara(eleccion.tamano, conSexo), Math.max(1, conSexo))
+    : lista.length;
+  const usadas = cantidad > 0 ? companiasParaReparto(existentes, cantidad, alcance) : [];
+  const usadasIds = new Set(usadas.map((c) => c.id));
+  const alternativas = puedeCrear
+    ? [cantidad - 2, cantidad - 1, cantidad, cantidad + 1, cantidad + 2]
+        .filter((k) => k >= 1 && k <= conSexo)
+        .map((k) => alternativa(k, mujeres, hombres, lista.length, pisos))
+    : [];
+
+  return {
+    propuesta: proponerCompanias(jovenes, usadas, modo, alcance),
+    total: jovenes.length,
+    sinCompania,
+    mujeres,
+    hombres,
+    cantidad: usadas.length,
+    alternativas,
+    /** Compañías que ya existen y este reparto deja vacías. */
+    vacias: existentes.filter((c) => !usadasIds.has(c.id)).map((c) => c.numero),
+    consejeros: {
+      hombres: (consejeros.data ?? []).filter((c) => c.sexo === "Hombre").length,
+      mujeres: (consejeros.data ?? []).filter((c) => c.sexo === "Mujer").length,
+    },
+  };
 }
 
 export async function propuestaCamas(alcance: Alcance) {
