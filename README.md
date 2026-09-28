@@ -44,13 +44,20 @@ npm run typecheck && npm run lint && npm run build
 
 ### 4. Vercel
 
-Variables de entorno del proyecto (Production y Preview):
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y
-`SUPABASE_SERVICE_ROLE_KEY` (esta **sin** prefijo `NEXT_PUBLIC_`).
-`DATABASE_URL` y `ADMIN_*` no van a Vercel.
+Producción: **https://backoffice-fsy.vercel.app** (proyecto `backoffice-fsy`).
 
-Orden al desplegar un cambio que toca la base: **primero `npm run migrate`,
-después el despliegue.**
+```bash
+npm run migrate      # solo si el cambio toca la base: SIEMPRE antes
+npm run desplegar    # despliega el último commit con VERCEL_TOKEN de .env.local
+```
+
+`desplegar` sube solo lo commiteado. La cuenta de Vercel todavía no está
+conectada a GitHub; si se conecta (Vercel → Account Settings → Authentication →
+GitHub) y se enlaza el repo, cada push a `main` despliega solo.
+
+Variables del proyecto en Vercel (ya cargadas): `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` (sensible, sin
+prefijo `NEXT_PUBLIC_`). `DATABASE_URL`, `ADMIN_*` y los tokens no van a Vercel.
 
 ## Modelo de permisos
 
