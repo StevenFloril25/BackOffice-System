@@ -45,6 +45,8 @@ export interface Consejero extends ConsejeroResumen {
   contacto_emergencia_telefono: string | null;
   notas: string | null;
   habitacion_id: string | null;
+  /** Su cuenta de acceso (rol Consejero). */
+  profile_id: string | null;
   created_at: string;
   barrio: BarrioResumen | null;
   habitacion: HabitacionResumen | null;

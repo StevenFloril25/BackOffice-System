@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { Printer } from "lucide-react";
+
 import { SinAcceso } from "@/components/sin-acceso";
-import { EncabezadoPagina } from "@/components/ui";
+import { EncabezadoPagina, EnlaceBoton } from "@/components/ui";
 import {
   consejerosLibres,
   jovenesSinHabitacion,
@@ -49,13 +51,19 @@ export default async function FichaHabitacion({ params }: { params: Promise<{ id
           .filter(Boolean)
           .join(" · ")}
         acciones={
-          <AccionesHabitacion
-            habitacion={{ id: h.id, edificio_id: h.edificio_id, piso: h.piso, nombre: h.nombre, tipo: h.tipo, capacidad: h.capacidad, notas: h.notas }}
-            edificios={edificios.map(({ id: eId, nombre, sexo, notas }) => ({ id: eId, nombre, sexo, notas }))}
-            ocupados={ocupantes.length}
-            puedeEditar={editable}
-            puedeEliminar={puede(sesion, "habitaciones.eliminar")}
-          />
+          <>
+            <EnlaceBoton href={`/distribucion?habitacion=${h.id}`} target="_blank" variante="secundario">
+              <Printer className="size-4" aria-hidden />
+              Imprimir
+            </EnlaceBoton>
+            <AccionesHabitacion
+              habitacion={{ id: h.id, edificio_id: h.edificio_id, piso: h.piso, nombre: h.nombre, tipo: h.tipo, capacidad: h.capacidad, notas: h.notas }}
+              edificios={edificios.map(({ id: eId, nombre, sexo, notas }) => ({ id: eId, nombre, sexo, notas }))}
+              ocupados={ocupantes.length}
+              puedeEditar={editable}
+              puedeEliminar={puede(sesion, "habitaciones.eliminar")}
+            />
+          </>
         }
       />
 
@@ -67,6 +75,7 @@ export default async function FichaHabitacion({ params }: { params: Promise<{ id
         ocupantes={ocupantes}
         libres={libres}
         editable={editable}
+        enlaces={{ participantes: puede(sesion, "participantes.ver"), consejeros: puede(sesion, "consejeros.ver") }}
       />
     </>
   );

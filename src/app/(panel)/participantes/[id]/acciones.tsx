@@ -1,12 +1,13 @@
 "use client";
 
+import clsx from "clsx";
 import { CheckCircle2, Clock, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { AvisoBreve, Dialogo, Fecha } from "@/components/cliente";
 import { EditorFoto } from "@/components/foto";
 import { Alerta, Boton, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
-import { eliminarParticipante, marcarAsistencia, quitarFotoParticipante, subirFotoParticipante } from "../actions";
+import { eliminarParticipante, marcarAsistencia, marcarKit, quitarFotoParticipante, subirFotoParticipante } from "../actions";
 
 export function FotoParticipante({ id, url, texto, editable }: { id: string; url: string | null; texto: string; editable: boolean }) {
   return (
@@ -78,7 +79,6 @@ export function Asistencia({
                 <Fecha iso={asistioAt} conHora />
                 {registradoPor && <> · registró {registradoPor}</>}
               </p>
-              <p className="mt-1 font-medium">Kit entregado{tallaCorta && ` · talla ${tallaCorta}`}</p>
             </div>
           </div>
         ) : (
@@ -113,6 +113,79 @@ export function Asistencia({
           </Boton>
         </div>
       </Dialogo>
+    </Tarjeta>
+  );
+}
+
+/**
+ * Casilla del kit. Se marca sola al registrar la llegada (QR o a mano); aquí se
+ * marca o desmarca a mano, por ejemplo si se entregó antes o por separado.
+ */
+export function KitParticipante({
+  id,
+  talla,
+  entregadoAt,
+  origen,
+  puedeMarcar,
+}: {
+  id: string;
+  talla: string | null;
+  entregadoAt: string | null;
+  origen: "llegada" | "casilla" | null;
+  puedeMarcar: boolean;
+}) {
+  const [marcado, setMarcado] = useState(Boolean(entregadoAt));
+  const [cuando, setCuando] = useState(entregadoAt);
+  const [error, setError] = useState<string | null>(null);
+  const [pendiente, iniciar] = useTransition();
+  const tallaCorta = talla?.replace(" (unisex)", "") ?? null;
+
+  function cambiar(valor: boolean) {
+    setMarcado(valor);
+    iniciar(async () => {
+      setError(null);
+      const r = await marcarKit(id, valor);
+      if (r.error) {
+        setMarcado(!valor);
+        setError(r.error);
+      } else setCuando(r.entregado_at ?? null);
+    });
+  }
+
+  return (
+    <Tarjeta>
+      <EncabezadoTarjeta titulo="Kit" descripcion={tallaCorta ? `Camiseta talla ${tallaCorta}.` : "Sin talla registrada."} />
+      <div className="space-y-3 p-5 sm:p-6">
+        {error && <Alerta tipo="error">{error}</Alerta>}
+        <label
+          className={clsx(
+            "flex items-start gap-3 rounded-xl border p-4 transition-colors",
+            marcado ? "border-hoja-200 bg-hoja-100/70" : "border-slate-200",
+            puedeMarcar ? "cursor-pointer hover:border-marca-300" : "cursor-not-allowed opacity-80",
+          )}
+        >
+          <input
+            type="checkbox"
+            checked={marcado}
+            disabled={!puedeMarcar || pendiente}
+            onChange={(e) => cambiar(e.target.checked)}
+            className="mt-0.5 size-5 shrink-0 accent-hoja-600"
+          />
+          <span className="text-sm">
+            <span className="block font-semibold text-slate-800">Se entregó el kit</span>
+            <span className="block text-slate-500">
+              {marcado && cuando ? (
+                <>
+                  <Fecha iso={cuando} conHora />
+                  {origen === "llegada" && marcado && cuando === entregadoAt ? " · al registrar la llegada" : ""}
+                </>
+              ) : (
+                "Se marca solo al registrar la llegada."
+              )}
+            </span>
+          </span>
+        </label>
+      </div>
     </Tarjeta>
   );
 }

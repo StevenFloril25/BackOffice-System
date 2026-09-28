@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { BotonEnviar, ResultadoEnvio } from "@/components/cliente";
+import { BotonEnviar, ResultadoEnvio, Seleccion } from "@/components/cliente";
 import { Campo } from "@/components/ui";
 import type { RolOpcion, UsuarioFila } from "@/lib/usuarios";
 import { actualizarUsuario } from "../actions";
@@ -50,7 +50,7 @@ export function FormularioEditarUsuario({
           <input id="phone" name="phone" type="tel" defaultValue={val.phone} className="entrada" />
         </Campo>
         <Campo etiqueta="Rol" htmlFor="role_id" error={err.role_id}>
-          <select id="role_id" name="role_id" required defaultValue={val.role_id} className="entrada">
+          <Seleccion id="role_id" name="role_id" required defaultValue={val.role_id} className="entrada">
             <option value="" disabled>
               Sin rol — elige uno…
             </option>
@@ -59,7 +59,7 @@ export function FormularioEditarUsuario({
                 {r.name}
               </option>
             ))}
-          </select>
+          </Seleccion>
         </Campo>
       </fieldset>
       {editable && (

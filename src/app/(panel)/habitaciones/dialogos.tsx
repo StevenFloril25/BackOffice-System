@@ -3,7 +3,7 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 
-import { AvisoBreve, BotonEnviar, Dialogo } from "@/components/cliente";
+import { AvisoBreve, BotonEnviar, Dialogo, Seleccion } from "@/components/cliente";
 import { Alerta, Boton, Campo, claseBoton } from "@/components/ui";
 import type { Sexo, TipoHabitacion } from "@/lib/organizacion-comun";
 import {
@@ -266,13 +266,13 @@ function FormularioEdificio({
           <input id="nombre" name="nombre" defaultValue={val.nombre} placeholder="Ej. Abish" className="entrada" autoComplete="off" />
         </Campo>
         <Campo etiqueta="Es de" htmlFor="sexo" error={err.sexo}>
-          <select id="sexo" name="sexo" defaultValue={val.sexo} className="entrada">
+          <Seleccion id="sexo" name="sexo" defaultValue={val.sexo} className="entrada">
             <option value="" disabled>
               Elige…
             </option>
             <option value="Mujer">Mujeres</option>
             <option value="Hombre">Hombres</option>
-          </select>
+          </Seleccion>
         </Campo>
       </div>
       {!edificio && (
@@ -409,13 +409,13 @@ function FormularioHabitacion({
       {estado?.error && <Alerta tipo="error">{estado.error}</Alerta>}
       <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
         <Campo etiqueta="Edificio" htmlFor="edificio_id" error={err.edificio_id}>
-          <select id="edificio_id" name="edificio_id" defaultValue={val.edificio_id} className="entrada">
+          <Seleccion id="edificio_id" name="edificio_id" defaultValue={val.edificio_id} className="entrada">
             {edificios.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.nombre} ({e.sexo === "Mujer" ? "mujeres" : "hombres"})
               </option>
             ))}
-          </select>
+          </Seleccion>
         </Campo>
         <Campo etiqueta="Piso" htmlFor="piso" error={err.piso}>
           <input id="piso" name="piso" type="number" inputMode="numeric" min={0} max={60} defaultValue={val.piso} className="entrada" />
@@ -430,10 +430,10 @@ function FormularioHabitacion({
         </Campo>
       </div>
       <Campo etiqueta="Para" htmlFor="tipo" error={err.tipo}>
-        <select id="tipo" name="tipo" defaultValue={val.tipo} className="entrada">
+        <Seleccion id="tipo" name="tipo" defaultValue={val.tipo} className="entrada">
           <option value="jovenes">Jóvenes (participantes)</option>
           <option value="lideres">Líderes (consejeros)</option>
-        </select>
+        </Seleccion>
       </Campo>
       <Campo etiqueta="Notas" htmlFor="notas" error={err.notas}>
         <textarea id="notas" name="notas" rows={2} defaultValue={val.notas} className="entrada resize-y" />

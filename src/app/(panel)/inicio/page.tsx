@@ -35,7 +35,9 @@ export default async function Inicio() {
   ]);
 
   const primerNombre = sesion.nombre.split(" ")[0] || sesion.email;
-  const accesos = MENU.flatMap((s) => s.items).filter((i) => i.permiso && puede(sesion, i.permiso));
+  const accesos = MENU.flatMap((s) => s.items).filter(
+    (i) => i.permiso && puede(sesion, i.permiso) && !(sesion.esAdmin && i.ocultarAlAdmin),
+  );
   const misModulos = catalogo
     .map((m) => ({ ...m, acciones: m.permisos.filter((p) => puede(sesion, p.key)) }))
     .filter((m) => m.acciones.length > 0);

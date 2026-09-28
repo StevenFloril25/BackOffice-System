@@ -85,6 +85,7 @@ export function OcupantesHabitacion({
   ocupantes,
   libres: candidatos,
   editable,
+  enlaces,
 }: {
   habitacionId: string;
   capacidad: number;
@@ -93,6 +94,8 @@ export function OcupantesHabitacion({
   ocupantes: Integrante[];
   libres: Elegible[];
   editable: boolean;
+  /** A qué fichas puede entrar quien mira: un consejero ve la habitación, no las fichas. */
+  enlaces: { participantes: boolean; consejeros: boolean };
 }) {
   const [selector, setSelector] = useState(false);
   const [aviso, avisar] = useAviso();
@@ -171,12 +174,16 @@ export function OcupantesHabitacion({
               <li key={o.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
                 <Avatar texto={o.nombre} src={o.foto} tamano="sm" />
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={o.tipo === "consejero" ? `/consejeros/${o.id}` : `/participantes/${o.id}`}
-                    className="block truncate text-sm font-semibold text-slate-800 hover:text-marca-700"
-                  >
-                    {o.nombre}
-                  </Link>
+                  {(o.tipo === "consejero" ? enlaces.consejeros : enlaces.participantes) ? (
+                    <Link
+                      href={o.tipo === "consejero" ? `/consejeros/${o.id}` : `/participantes/${o.id}`}
+                      className="block truncate text-sm font-semibold text-slate-800 hover:text-marca-700"
+                    >
+                      {o.nombre}
+                    </Link>
+                  ) : (
+                    <p className="truncate text-sm font-semibold text-slate-800">{o.nombre}</p>
+                  )}
                   <p className="truncate text-xs text-slate-500">{[o.edad !== null ? `${o.edad} años` : null, o.barrio].filter(Boolean).join(" · ") || "—"}</p>
                 </div>
                 {o.compania ? <ChipCompania numero={o.compania} /> : <span className="text-xs text-slate-400">Sin compañía</span>}

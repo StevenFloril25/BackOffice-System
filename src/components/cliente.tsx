@@ -81,6 +81,20 @@ export function ResultadoEnvio({
   );
 }
 
+/**
+ * <select> para formularios con acción: conserva lo elegido cuando la acción
+ * vuelve con un error.
+ *
+ * React 19 reinicia el formulario después de cada acción, y un <select> vuelve a
+ * la opción que tenía por defecto AL MONTARSE: un defaultValue nuevo no cambia
+ * esa opción (a un <input> sí). Se perdía, p. ej., el sexo elegido y el siguiente
+ * envío volvía a fallar sin que se notara por qué. La key lo vuelve a montar
+ * cuando llega otro valor (lo enviado tras un error, o lo recién guardado).
+ */
+export function Seleccion({ defaultValue, ...props }: ComponentProps<"select">) {
+  return <select key={String(defaultValue ?? "")} defaultValue={defaultValue} {...props} />;
+}
+
 /** Campo de contraseña con botón para mostrar/ocultar. */
 export function EntradaClave({ className, ...props }: ComponentProps<"input">) {
   const [visible, setVisible] = useState(false);

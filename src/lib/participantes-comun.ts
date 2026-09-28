@@ -34,8 +34,9 @@ export interface Participante {
   qr_token: string;
   asistio_at: string | null;
   asistencia_por: string | null;
-  /** Se marca solo al registrar la llegada (ver 0008). */
+  /** Se marca solo al registrar la llegada, o con la casilla de la ficha (ver 0010). */
   kit_entregado_at: string | null;
+  kit_origen: "llegada" | "casilla" | null;
   compania_id: string | null;
   habitacion_id: string | null;
   origen: "manual" | "importacion";

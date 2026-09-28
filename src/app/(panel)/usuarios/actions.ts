@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
 import { validarClaveNueva } from "@/lib/claves";
+import { mensajeAuth, usuarioSugerido } from "@/lib/cuentas";
 import { borrarFoto, subirFoto } from "@/lib/fotos";
 import { obtenerSesion, validarPermiso, type Sesion } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -100,27 +101,8 @@ async function adminsActivos(): Promise<number> {
   return count ?? 0;
 }
 
-/** Usuario libre a partir del correo: "maria.perez@x.com" -> "maria.perez" (o "maria.perez2"...). */
-async function usuarioSugerido(email: string): Promise<string> {
-  let base = email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "").replace(/^[^a-z0-9]+/, "");
-  if (base.length < 3) base = `${base}usr`;
-  base = base.slice(0, 26);
-  const { data } = await createAdminClient().from("profiles").select("username").ilike("username", `${base}%`);
-  const usados = new Set((data ?? []).map((x) => x.username as string));
-  if (!usados.has(base)) return base;
-  let n = 2;
-  while (usados.has(`${base}${n}`)) n++;
-  return `${base}${n}`;
-}
-
 function esUsuarioDuplicado(message: string) {
   return /profiles_username_unico/.test(message);
-}
-
-function mensajeAuth(message: string) {
-  if (/already been registered|already exists|email_exists/i.test(message)) return "Ya existe una cuenta con ese correo.";
-  if (/password/i.test(message)) return "La contraseña no cumple los requisitos de seguridad.";
-  return message;
 }
 
 // ---------------------------------------------------------------------------

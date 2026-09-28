@@ -18,7 +18,7 @@ export default async function NuevoConsejero() {
     <>
       <EncabezadoPagina
         titulo="Nuevo consejero"
-        descripcion="Después se le asigna una compañía y una habitación desde esas páginas."
+        descripcion="Al registrarlo se le crea su cuenta con el rol Consejero: podrá ver las habitaciones y su compañía. La compañía y la cama se le asignan después desde esas páginas."
         migas={[{ etiqueta: "Consejeros", href: "/consejeros" }, { etiqueta: "Nuevo" }]}
       />
       <FormularioConsejero id={null} inicial={{}} barrios={barrios} editable puedeCrearBarrio={puede(sesion, "barrios.crear")} />

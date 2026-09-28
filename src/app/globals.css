@@ -52,6 +52,46 @@
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-marca-500;
   }
+
+  /* Barras de desplazamiento finas con el azul de la marca, en vez de la gris
+     del sistema. scrollbar-color lo toman Chrome, Edge y Firefox; las reglas
+     ::-webkit-scrollbar quedan para Safari. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(2 85 130 / 0.35) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: rgb(2 85 130 / 0.35) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(2 85 130 / 0.55);
+  }
+}
+
+/* Sobre el menú azul oscuro: una barra clara y discreta. */
+.barra-oscura {
+  scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+}
+
+.barra-oscura::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.22);
+}
+
+.barra-oscura::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(255 255 255 / 0.4);
 }
 
 @layer components {

@@ -8,7 +8,7 @@ import { registrarAuditoria } from "@/lib/auditoria";
 import { borrarFoto, subirFoto } from "@/lib/fotos";
 import { importarParticipantes, type ResumenImportacion } from "@/lib/importar-participantes";
 import { CAMPOS_SALUD, claveParticipante } from "@/lib/participantes";
-import { puede, validarPermiso } from "@/lib/sesion";
+import { obtenerSesion, puede, validarPermiso } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -248,6 +248,20 @@ export async function marcarAsistencia(id: string, asistio: boolean): Promise<Es
   revalidatePath(`/participantes/${id}`);
   revalidatePath("/asistencia");
   return { ok: asistio ? "Asistencia registrada." : "Asistencia anulada." };
+}
+
+/** Casilla del kit en la ficha. La permite quien toma asistencia o edita participantes (lo valida marcar_kit). */
+export async function marcarKit(id: string, entregado: boolean): Promise<EstadoParticipante & { entregado_at?: string | null }> {
+  const sesion = await obtenerSesion();
+  if (!sesion?.activo) return { error: "Tu sesión expiró. Vuelve a ingresar." };
+  if (!puede(sesion, "asistencia.registrar") && !puede(sesion, "participantes.editar")) {
+    return { error: "No tienes permiso para marcar el kit." };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("marcar_kit", { p_id: id, p_entregado: entregado });
+  if (error) return { error: "No se pudo guardar. Intenta de nuevo." };
+  revalidatePath(`/participantes/${id}`);
+  return { ok: entregado ? "Kit entregado." : "Kit pendiente.", entregado_at: (data as string | null) ?? null };
 }
 
 // ---------------------------------------------------------------------------

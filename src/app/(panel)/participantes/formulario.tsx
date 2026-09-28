@@ -3,7 +3,7 @@
 import { HeartPulse, Plus } from "lucide-react";
 import { useActionState, useMemo, useState } from "react";
 
-import { BotonEnviar, ResultadoEnvio } from "@/components/cliente";
+import { BotonEnviar, ResultadoEnvio, Seleccion } from "@/components/cliente";
 import { Campo, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { CAMPOS_SALUD, TALLAS, type BarrioResumen } from "@/lib/participantes-comun";
 import { DialogoBarrio } from "../barrios/dialogo-barrio";
@@ -61,11 +61,11 @@ export function FormularioParticipante({ id, inicial, barrios: barriosIniciales,
                 <input id="fecha_nacimiento" name="fecha_nacimiento" type="date" defaultValue={val.fecha_nacimiento} className="entrada" />
               </Campo>
               <Campo etiqueta="Sexo" htmlFor="sexo" error={err.sexo}>
-                <select id="sexo" name="sexo" defaultValue={val.sexo} className="entrada">
+                <Seleccion id="sexo" name="sexo" defaultValue={val.sexo} className="entrada">
                   <option value="">Sin indicar</option>
                   <option value="Mujer">Mujer</option>
                   <option value="Hombre">Hombre</option>
-                </select>
+                </Seleccion>
               </Campo>
               <Campo etiqueta="Teléfono" htmlFor="telefono" error={err.telefono}>
                 <input id="telefono" name="telefono" type="tel" defaultValue={val.telefono} className="entrada" />
@@ -74,14 +74,14 @@ export function FormularioParticipante({ id, inicial, barrios: barriosIniciales,
                 <input id="correo" name="correo" type="email" defaultValue={val.correo} className="entrada" />
               </Campo>
               <Campo etiqueta="Talla de camiseta" htmlFor="talla_camiseta" error={err.talla_camiseta}>
-                <select id="talla_camiseta" name="talla_camiseta" defaultValue={val.talla_camiseta} className="entrada">
+                <Seleccion id="talla_camiseta" name="talla_camiseta" defaultValue={val.talla_camiseta} className="entrada">
                   <option value="">Sin indicar</option>
                   {[...new Set([...TALLAS, ...(val.talla_camiseta ? [val.talla_camiseta] : [])])].map((t) => (
                     <option key={t} value={t}>
                       {t}
                     </option>
                   ))}
-                </select>
+                </Seleccion>
               </Campo>
             </div>
           </Tarjeta>

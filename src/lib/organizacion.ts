@@ -122,6 +122,52 @@ export async function resumenPorCompania(): Promise<{ porCompania: Record<string
   return { porCompania, sinCompania, total: data?.length ?? 0 };
 }
 
+export interface JovenDeMiCompania {
+  id: string;
+  nombre: string;
+  preferido: string;
+  sexo: Sexo | null;
+  edad: number | null;
+  barrio: string | null;
+  foto: string | null;
+  duerme: string | null;
+  contacto: { nombre: string | null; telefono: string | null };
+}
+
+/**
+ * La compañía del consejero que tiene la sesión, con sus jóvenes y el contacto
+ * de emergencia de cada uno. null si no es consejero o no tiene compañía.
+ */
+export async function miCompania(): Promise<{ compania: CompaniaFila; jovenes: JovenDeMiCompania[] } | null> {
+  const supabase = await createClient();
+  const { data: id } = await supabase.rpc("mi_compania_id");
+  if (!id) return null;
+  const compania = await obtenerCompania(id as string);
+  if (!compania) return null;
+  const { data } = await supabase
+    .from("participantes")
+    .select(
+      "id, nombres, apellidos, nombre_preferido, sexo, fecha_nacimiento, foto_path, contacto1_nombre, contacto1_telefono, barrio:barrios(nombre), habitacion:habitaciones(piso, edificio:edificios(nombre))",
+    )
+    .eq("compania_id", compania.id);
+  const filas = data ?? [];
+  const fotos = await urlsFotos(filas.map((j) => j.foto_path));
+  const jovenes = filas
+    .map((j) => ({
+      id: j.id as string,
+      nombre: nombreCompleto(j),
+      preferido: (j.nombre_preferido as string) ?? "",
+      sexo: j.sexo as Sexo | null,
+      edad: edad(j.fecha_nacimiento),
+      barrio: (j.barrio as unknown as { nombre: string } | null)?.nombre ?? null,
+      foto: j.foto_path ? (fotos[j.foto_path] ?? null) : null,
+      duerme: dondeDuerme(j.habitacion as unknown as { piso: number; edificio: { nombre: string } | null } | null),
+      contacto: { nombre: j.contacto1_nombre as string | null, telefono: j.contacto1_telefono as string | null },
+    }))
+    .sort((a, b) => porNombre.compare(a.nombre, b.nombre));
+  return { compania, jovenes };
+}
+
 // ---------------------------------------------------------------------------
 // Edificios y habitaciones
 // ---------------------------------------------------------------------------

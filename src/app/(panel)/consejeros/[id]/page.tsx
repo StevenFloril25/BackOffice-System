@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BedDouble, Flag } from "lucide-react";
 
-import { AvisoBreve } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
 import { EncabezadoPagina, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { urlFoto } from "@/lib/fotos";
@@ -11,30 +10,37 @@ import { companiaDeConsejeros, nombreCompania, obtenerConsejero, rolConsejero } 
 import { edad, listarBarriosOpciones, nombreCompleto } from "@/lib/participantes";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { FormularioConsejero } from "../formulario";
-import { EliminarConsejero, FotoConsejero } from "./acciones";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { CuentaConsejero, EliminarConsejero, FotoConsejero } from "./acciones";
 
 export const metadata: Metadata = { title: "Consejero" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function FichaConsejero({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ aviso?: string }>;
-}) {
+export default async function FichaConsejero({ params }: { params: Promise<{ id: string }> }) {
   const sesion = await exigirSesion();
   if (!puede(sesion, "consejeros.ver")) return <SinAcceso permiso="consejeros.ver" />;
 
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  const { aviso } = await searchParams;
 
   const [c, barrios, companias] = await Promise.all([obtenerConsejero(id), listarBarriosOpciones(), companiaDeConsejeros()]);
   if (!c) notFound();
 
   const editable = puede(sesion, "consejeros.editar");
+  // La cuenta se lee con la llave de servicio: quien ve consejeros no necesita permiso de usuarios para verla.
+  const { data: perfil } = c.profile_id
+    ? await createAdminClient().from("profiles").select("id, username, email, active, rol:roles(name)").eq("id", c.profile_id).maybeSingle()
+    : { data: null };
+  const cuenta = perfil
+    ? {
+        id: perfil.id as string,
+        usuario: perfil.username as string | null,
+        email: perfil.email as string,
+        rol: (perfil.rol as unknown as { name: string } | null)?.name ?? null,
+        activa: Boolean(perfil.active),
+      }
+    : null;
   const foto = await urlFoto(c.foto_path);
   const compania = companias[c.id];
   const e = edad(c.fecha_nacimiento);
@@ -60,10 +66,6 @@ export default async function FichaConsejero({
         titulo={nombreCompleto(c)}
         descripcion={[rolConsejero(c.sexo), e !== null ? `${e} años` : null, c.barrio?.nombre].filter(Boolean).join(" · ")}
       />
-
-      {aviso === "creado" && (
-        <AvisoBreve titulo={`${rolConsejero(c.sexo)} registrad${c.sexo === "Mujer" ? "a" : "o"}`} detalle={nombreCompleto(c)} quitarDeUrl="aviso" />
-      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -112,6 +114,8 @@ export default async function FichaConsejero({
               </li>
             </ul>
           </Tarjeta>
+
+          <CuentaConsejero id={c.id} cuenta={cuenta} verUsuarios={puede(sesion, "usuarios.ver")} puedeCrear={editable} />
 
           {puede(sesion, "consejeros.eliminar") && (
             <EliminarConsejero id={c.id} nombre={nombreCompleto(c)} asignado={Boolean(compania || c.habitacion)} />

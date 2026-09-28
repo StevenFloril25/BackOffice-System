@@ -12,7 +12,7 @@ import { CAMPOS_SALUD, edad, listarBarriosOpciones, nombreCompleto, obtenerParti
 import { exigirSesion, puede } from "@/lib/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { FormularioParticipante } from "../formulario";
-import { Asistencia, EliminarParticipante, FotoParticipante } from "./acciones";
+import { Asistencia, EliminarParticipante, FotoParticipante, KitParticipante } from "./acciones";
 import { QrParticipante } from "./qr";
 
 export const metadata: Metadata = { title: "Participante" };
@@ -118,6 +118,16 @@ export default async function FichaParticipante({
             asistioAt={p.asistio_at}
             registradoPor={registradoPor}
             puedeRegistrar={puede(sesion, "asistencia.registrar")}
+          />
+
+          {/* key: si la llegada marca o quita el kit, la casilla se vuelve a montar con el valor nuevo. */}
+          <KitParticipante
+            key={p.kit_entregado_at ?? "pendiente"}
+            id={p.id}
+            talla={p.talla_camiseta}
+            entregadoAt={p.kit_entregado_at}
+            origen={p.kit_origen}
+            puedeMarcar={puede(sesion, "asistencia.registrar") || puede(sesion, "participantes.editar")}
           />
 
           <Tarjeta>

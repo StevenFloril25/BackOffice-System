@@ -6,6 +6,8 @@ export interface ItemMenu {
   icono: NombreIcono;
   /** Permiso que habilita la entrada. Sin permiso: visible para todos. */
   permiso?: string;
+  /** Entradas "de uno mismo" (Mi compañía): el administrador, que ve todo, no las necesita. */
+  ocultarAlAdmin?: boolean;
 }
 
 export interface SeccionMenu {
@@ -25,12 +27,12 @@ export const MENU: SeccionMenu[] = [
   {
     titulo: "Conferencia",
     items: [
+      { href: "/mi-compania", etiqueta: "Mi compañía", icono: "users-round", permiso: "companias.ver_propia", ocultarAlAdmin: true },
       { href: "/participantes", etiqueta: "Participantes", icono: "id-card", permiso: "participantes.ver" },
       { href: "/consejeros", etiqueta: "Consejeros", icono: "heart-handshake", permiso: "consejeros.ver" },
       { href: "/companias", etiqueta: "Compañías", icono: "flag", permiso: "companias.ver" },
       { href: "/habitaciones", etiqueta: "Habitaciones", icono: "bed-double", permiso: "habitaciones.ver" },
       { href: "/asistencia", etiqueta: "Registro de asistencia", icono: "scan-line", permiso: "asistencia.registrar" },
-      { href: "/kits", etiqueta: "Entrega de kits", icono: "package", permiso: "kits.ver" },
       { href: "/barrios", etiqueta: "Barrios", icono: "church", permiso: "barrios.ver" },
     ],
   },
@@ -47,6 +49,6 @@ export const MENU: SeccionMenu[] = [
 export function menuVisible(permisos: string[], esAdmin: boolean): SeccionMenu[] {
   return MENU.map((s) => ({
     ...s,
-    items: s.items.filter((i) => !i.permiso || esAdmin || permisos.includes(i.permiso)),
+    items: s.items.filter((i) => (esAdmin ? !i.ocultarAlAdmin : !i.permiso || permisos.includes(i.permiso))),
   })).filter((s) => s.items.length > 0);
 }

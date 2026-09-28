@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
-import { BedDouble, CircleAlert } from "lucide-react";
+import { BedDouble, CircleAlert, Printer } from "lucide-react";
 
 import { SinAcceso } from "@/components/sin-acceso";
-import { Alerta, EncabezadoPagina, EstadoVacio, Insignia, Tarjeta } from "@/components/ui";
+import { Alerta, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, Tarjeta, claseBoton } from "@/components/ui";
 import {
   jovenesSinCama,
   listarCompanias,
@@ -84,13 +84,22 @@ export default async function PaginaHabitaciones({ searchParams }: { searchParam
   const ocupadasJovenes = todosLosPisos.reduce((n, p) => n + p.ocupadosJovenes, 0);
   const pisosSinLider = todosLosPisos.filter((p) => p.ocupadosJovenes > 0 && p.ocupadosLideres === 0).length;
   const lista = edificios.map(({ id, nombre, sexo, notas }) => ({ id, nombre, sexo, notas }));
+  const verCompanias = puede(sesion, "companias.ver");
 
   return (
     <>
       <EncabezadoPagina
         titulo="Habitaciones"
         descripcion="Edificios de mujeres y de hombres, piso por piso. Cada cuadrito es una cama: con el color de la compañía de quien duerme ahí, o en blanco si está libre."
-        acciones={<AccionesHabitaciones puedeCrear={puede(sesion, "habitaciones.crear")} />}
+        acciones={
+          <>
+            <EnlaceBoton href="/distribucion" target="_blank" variante="secundario">
+              <Printer className="size-4" aria-hidden />
+              Imprimir distribución
+            </EnlaceBoton>
+            <AccionesHabitaciones puedeCrear={puede(sesion, "habitaciones.crear")} />
+          </>
+        }
       />
 
       {aviso === "eliminada" && (
@@ -131,10 +140,13 @@ export default async function PaginaHabitaciones({ searchParams }: { searchParam
           <div className="flex flex-wrap gap-1.5">
             {companias.map((c) => {
               const r = resumen.porCompania[c.id];
-              return (
+              const chip = <ChipCompania numero={c.numero} texto={`${r?.conCama ?? 0}/${r?.total ?? 0}`} grande />;
+              return verCompanias ? (
                 <Link key={c.id} href={`/companias/${c.id}`} title={`Compañía ${c.numero}`}>
-                  <ChipCompania numero={c.numero} texto={`${r?.conCama ?? 0}/${r?.total ?? 0}`} grande />
+                  {chip}
                 </Link>
+              ) : (
+                <span key={c.id}>{chip}</span>
               );
             })}
           </div>
@@ -209,14 +221,20 @@ function TarjetaEdificio({
             {pisos.length} piso{pisos.length === 1 ? "" : "s"} · {ocupadas} de {camas} camas ocupadas{e.notas && ` · ${e.notas}`}
           </p>
         </div>
-        <AccionesEdificio
-          edificio={{ id: e.id, nombre: e.nombre, sexo: e.sexo, notas: e.notas }}
-          edificios={edificios}
-          pisos={pisos.map((p) => ({ piso: p.numero, camas: p.camasJovenes + p.camasLideres, ocupados: p.ocupadosJovenes + p.ocupadosLideres }))}
-          puedeCrear={puedeCrear}
-          puedeEditar={puedeEditar}
-          puedeEliminar={puedeEliminar}
-        />
+        <div className="flex flex-wrap items-center gap-1">
+          <a href={`/distribucion?edificio=${e.id}`} target="_blank" rel="noreferrer" className={claseBoton("fantasma", "sm")}>
+            <Printer className="size-3.5" aria-hidden />
+            Imprimir
+          </a>
+          <AccionesEdificio
+            edificio={{ id: e.id, nombre: e.nombre, sexo: e.sexo, notas: e.notas }}
+            edificios={edificios}
+            pisos={pisos.map((p) => ({ piso: p.numero, camas: p.camasJovenes + p.camasLideres, ocupados: p.ocupadosJovenes + p.ocupadosLideres }))}
+            puedeCrear={puedeCrear}
+            puedeEditar={puedeEditar}
+            puedeEliminar={puedeEliminar}
+          />
+        </div>
       </div>
 
       {pisos.length === 0 ? (
@@ -260,6 +278,16 @@ function TarjetaEdificio({
                     {numeros.map((n) => (
                       <ChipCompania key={n} numero={n} />
                     ))}
+                    <a
+                      href={`/distribucion?edificio=${e.id}&piso=${p.numero}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-auto rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-marca-700"
+                      title={`Imprimir el piso ${p.numero}`}
+                      aria-label={`Imprimir ${e.nombre}, piso ${p.numero}`}
+                    >
+                      <Printer className="size-3.5" aria-hidden />
+                    </a>
                   </div>
                 </div>
 

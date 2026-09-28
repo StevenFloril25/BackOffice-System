@@ -5,34 +5,42 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
+import { crearCuenta, mensajeAuth, perfilPorCorreo } from "@/lib/cuentas";
 import { mensajeBd } from "@/lib/errores";
 import { borrarFoto, subirFoto } from "@/lib/fotos";
-import { validarPermiso } from "@/lib/sesion";
+import { validarPermiso, type Sesion } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  correoOpcional,
-  erroresDe,
-  fechaOpcional,
-  idOpcional,
-  leerCampos,
-  telefonoOpcional,
-  textoOpcional,
-} from "@/lib/validacion";
+import { erroresDe, fechaOpcional, idOpcional, leerCampos, telefonoOpcional, textoOpcional } from "@/lib/validacion";
 
 export interface EstadoConsejero {
   ok?: string;
   error?: string;
   errores?: Record<string, string>;
   valores?: Record<string, string>;
+  /** Al registrar: la ficha nueva y los datos para ingresar, que se muestran UNA vez. */
+  id?: string;
+  email?: string;
+  usuario?: string;
+  clave?: string;
+  /** Ya tenía cuenta con ese correo: se vinculó en vez de crear otra. */
+  vinculada?: boolean;
 }
+
+const ROL = "consejero";
 
 const esquema = z.object({
   nombres: z.string().trim().min(2, "Escribe los nombres.").max(80),
   apellidos: z.string().trim().min(2, "Escribe los apellidos.").max(80),
-  sexo: z.enum(["Hombre", "Mujer"], { message: "Elige si es consejero (hombre) o consejera (mujer)." }),
+  sexo: z.enum(["Hombre", "Mujer"], { message: "Elige hombre o mujer." }),
   fecha_nacimiento: fechaOpcional,
   telefono: telefonoOpcional,
-  correo: correoOpcional,
+  // Obligatorio: con este correo (o su usuario) ingresa al sistema.
+  correo: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Escribe su correo: con él ingresa al sistema.")
+    .pipe(z.email("Correo no válido.")),
   barrio_id: idOpcional,
   talla_camiseta: textoOpcional(20),
   contacto_emergencia_nombre: textoOpcional(120),
@@ -40,6 +48,7 @@ const esquema = z.object({
   notas: textoOpcional(1000),
 });
 
+type Datos = z.infer<typeof esquema>;
 const CAMPOS = Object.keys(esquema.shape);
 
 function refrescar(id?: string) {
@@ -47,27 +56,120 @@ function refrescar(id?: string) {
   if (id) revalidatePath(`/consejeros/${id}`);
   revalidatePath("/companias", "layout");
   revalidatePath("/habitaciones", "layout");
+  revalidatePath("/usuarios", "layout");
 }
+
+async function correoEnOtroConsejero(correo: string, salvo?: string) {
+  let consulta = createAdminClient().from("consejeros").select("id").ilike("correo", correo);
+  if (salvo) consulta = consulta.neq("id", salvo);
+  const { data } = await consulta.limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Le da cuenta a un consejero: si ya existe una con su correo, la vincula (sin
+ * cambiarle el rol a quien ya tenía uno, p. ej. un administrador que también es
+ * consejero); si no, crea una con el rol Consejero y contraseña temporal.
+ */
+async function cuentaPara(
+  datos: Pick<Datos, "correo" | "nombres" | "apellidos" | "telefono">,
+  sesion: Sesion,
+): Promise<{ profileId: string; usuario: string | null; clave?: string; vinculada: boolean; creada: boolean } | { error: string }> {
+  const existente = await perfilPorCorreo(datos.correo);
+  if (existente) {
+    const { data: ocupado } = await createAdminClient().from("consejeros").select("id").eq("profile_id", existente.id).maybeSingle();
+    if (ocupado) return { error: "Esa cuenta ya es de otro consejero." };
+    if (!existente.rolKey) {
+      const { data: rol } = await createAdminClient().from("roles").select("id").eq("key", ROL).single();
+      await createAdminClient().from("profiles").update({ role_id: rol?.id }).eq("id", existente.id);
+    }
+    return { profileId: existente.id, usuario: existente.username, vinculada: true, creada: false };
+  }
+  const cuenta = await crearCuenta({
+    email: datos.correo,
+    nombre: `${datos.nombres} ${datos.apellidos}`,
+    telefono: datos.telefono,
+    rolKey: ROL,
+    creadaPor: sesion.id,
+  });
+  if ("error" in cuenta) return cuenta;
+  return { profileId: cuenta.id, usuario: cuenta.usuario, clave: cuenta.clave, vinculada: false, creada: true };
+}
+
+/** La cuenta vinculada, solo si se creó para el consejero (rol Consejero): las demás no se tocan desde aquí. */
+async function cuentaPropia(profileId: string | null) {
+  if (!profileId) return null;
+  const { data } = await createAdminClient().from("profiles").select("id, email, rol:roles(key)").eq("id", profileId).maybeSingle();
+  if (!data || (data.rol as unknown as { key: string } | null)?.key !== ROL) return null;
+  return { id: data.id as string, email: data.email as string };
+}
+
+// ---------------------------------------------------------------------------
 
 export async function crearConsejero(_previo: EstadoConsejero | undefined, formData: FormData): Promise<EstadoConsejero> {
   const permiso = await validarPermiso("consejeros.crear");
   if (!permiso.ok) return { error: permiso.error };
+  const { sesion } = permiso;
 
   const valores = leerCampos(formData, CAMPOS);
   const datos = esquema.safeParse(valores);
   if (!datos.success) return { errores: erroresDe(datos.error), valores };
+  if (await correoEnOtroConsejero(datos.data.correo)) return { errores: { correo: "Ya hay un consejero con ese correo." }, valores };
 
-  const { data, error } = await createAdminClient().from("consejeros").insert(datos.data).select("id").single();
-  if (error) return { error: mensajeBd(error, "No se pudo registrar al consejero."), valores };
+  const cuenta = await cuentaPara(datos.data, sesion);
+  if ("error" in cuenta) return { errores: { correo: cuenta.error }, valores };
 
-  await registrarAuditoria(permiso.sesion, {
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("consejeros").insert({ ...datos.data, profile_id: cuenta.profileId }).select("id").single();
+  if (error) {
+    // Sin ficha no hay para qué dejar la cuenta recién creada.
+    if (cuenta.creada) await admin.auth.admin.deleteUser(cuenta.profileId);
+    return { error: mensajeBd(error, "No se pudo registrar al consejero."), valores };
+  }
+
+  const nombre = `${datos.data.nombres} ${datos.data.apellidos}`;
+  await registrarAuditoria(sesion, {
     accion: "consejero.crear",
     entidad: "consejero",
     entidadId: data.id,
-    resumen: `Registró a ${datos.data.nombres} ${datos.data.apellidos} como ${datos.data.sexo === "Mujer" ? "consejera" : "consejero"}`,
+    resumen: cuenta.vinculada
+      ? `Registró a ${nombre} como consejero y lo vinculó a su cuenta existente`
+      : `Registró a ${nombre} como consejero, con su cuenta de acceso`,
   });
   refrescar();
-  redirect(`/consejeros/${data.id}?aviso=creado`);
+  return {
+    ok: "Consejero registrado.",
+    id: data.id,
+    email: datos.data.correo,
+    usuario: cuenta.usuario ?? undefined,
+    clave: cuenta.clave,
+    vinculada: cuenta.vinculada,
+  };
+}
+
+/** Para un consejero sin cuenta (p. ej. si se borró desde Usuarios). */
+export async function crearCuentaConsejero(id: string): Promise<EstadoConsejero> {
+  const permiso = await validarPermiso("consejeros.editar");
+  if (!permiso.ok) return { error: permiso.error };
+
+  const admin = createAdminClient();
+  const { data: c } = await admin.from("consejeros").select("nombres, apellidos, correo, telefono, profile_id").eq("id", id).maybeSingle();
+  if (!c) return { error: "El consejero no existe." };
+  if (c.profile_id) return { error: "Ya tiene cuenta." };
+  if (!c.correo) return { error: "Primero escribe su correo en la ficha y guarda." };
+
+  const cuenta = await cuentaPara({ correo: c.correo, nombres: c.nombres, apellidos: c.apellidos, telefono: c.telefono }, permiso.sesion);
+  if ("error" in cuenta) return { error: cuenta.error };
+  await admin.from("consejeros").update({ profile_id: cuenta.profileId }).eq("id", id);
+
+  await registrarAuditoria(permiso.sesion, {
+    accion: "consejero.cuenta",
+    entidad: "consejero",
+    entidadId: id,
+    resumen: `${cuenta.vinculada ? "Vinculó" : "Creó"} la cuenta de acceso de ${c.nombres} ${c.apellidos}`,
+  });
+  refrescar(id);
+  return { ok: cuenta.vinculada ? "Cuenta vinculada." : "Cuenta creada.", email: c.correo, usuario: cuenta.usuario ?? undefined, clave: cuenta.clave, vinculada: cuenta.vinculada };
 }
 
 export async function actualizarConsejero(
@@ -81,11 +183,29 @@ export async function actualizarConsejero(
   const valores = leerCampos(formData, CAMPOS);
   const datos = esquema.safeParse(valores);
   if (!datos.success) return { errores: erroresDe(datos.error), valores };
+  if (await correoEnOtroConsejero(datos.data.correo, id)) return { errores: { correo: "Ya hay otro consejero con ese correo." }, valores };
 
-  const { data, error } = await createAdminClient().from("consejeros").update(datos.data).eq("id", id).select("id").maybeSingle();
-  // Cambiar el sexo de quien ya tiene compañía o habitación lo frena la base, con su explicación.
+  const admin = createAdminClient();
+  const { data: actual } = await admin.from("consejeros").select("profile_id").eq("id", id).maybeSingle();
+  if (!actual) return { error: "El consejero no existe." };
+
+  // Su cuenta sigue a la ficha: nombre, teléfono y correo (con el que ingresa).
+  const cuenta = await cuentaPropia(actual.profile_id);
+  if (cuenta && cuenta.email.toLowerCase() !== datos.data.correo) {
+    const { error } = await admin.auth.admin.updateUserById(cuenta.id, { email: datos.data.correo, email_confirm: true });
+    if (error) return { errores: { correo: mensajeAuth(error.message) }, valores };
+  }
+
+  const { error } = await admin.from("consejeros").update(datos.data).eq("id", id);
+  // Cambiar el sexo de quien ya tiene compañía o cama lo frena la base, con su explicación.
   if (error) return { error: mensajeBd(error, "No se pudieron guardar los cambios."), valores };
-  if (!data) return { error: "El consejero no existe." };
+
+  if (cuenta) {
+    await admin
+      .from("profiles")
+      .update({ full_name: `${datos.data.nombres} ${datos.data.apellidos}`, phone: datos.data.telefono, email: datos.data.correo })
+      .eq("id", cuenta.id);
+  }
 
   await registrarAuditoria(permiso.sesion, {
     accion: "consejero.editar",
@@ -102,19 +222,22 @@ export async function eliminarConsejero(id: string): Promise<EstadoConsejero> {
   if (!permiso.ok) return { error: permiso.error };
 
   const admin = createAdminClient();
-  const { data } = await admin.from("consejeros").select("nombres, apellidos, foto_path").eq("id", id).maybeSingle();
+  const { data } = await admin.from("consejeros").select("nombres, apellidos, foto_path, profile_id").eq("id", id).maybeSingle();
   if (!data) return { error: "El consejero no existe." };
+  const cuenta = await cuentaPropia(data.profile_id);
 
   // Su lugar en la compañía queda libre (on delete set null) y su cama también.
   const { error } = await admin.from("consejeros").delete().eq("id", id);
   if (error) return { error: mensajeBd(error, "No se pudo eliminar.") };
   await borrarFoto(data.foto_path);
+  // La cuenta se creó para ser consejero: sin ficha no tiene para qué quedar.
+  if (cuenta) await admin.auth.admin.deleteUser(cuenta.id);
 
   await registrarAuditoria(permiso.sesion, {
     accion: "consejero.eliminar",
     entidad: "consejero",
     entidadId: id,
-    resumen: `Eliminó a ${data.nombres} ${data.apellidos}`,
+    resumen: `Eliminó a ${data.nombres} ${data.apellidos}${cuenta ? " y su cuenta de acceso" : ""}`,
   });
   refrescar();
   redirect("/consejeros?aviso=eliminado");

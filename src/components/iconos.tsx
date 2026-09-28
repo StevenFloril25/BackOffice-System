@@ -5,12 +5,12 @@ import {
   HeartHandshake,
   History,
   IdCard,
-  Package,
   ScanLine,
   LayoutDashboard,
   ShieldCheck,
   Square,
   Users,
+  UsersRound,
   type LucideIcon,
   type LucideProps,
 } from "lucide-react";
@@ -31,7 +31,7 @@ const ICONOS = {
   "heart-handshake": HeartHandshake,
   flag: Flag,
   "bed-double": BedDouble,
-  package: Package,
+  "users-round": UsersRound,
 } satisfies Record<string, LucideIcon>;
 
 export type NombreIcono = keyof typeof ICONOS;

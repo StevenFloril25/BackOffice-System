@@ -67,7 +67,7 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
           </button>
         </div>
 
-        <nav aria-label="Principal" className="relative flex-1 space-y-7 overflow-y-auto px-3 py-4">
+        <nav aria-label="Principal" className="barra-oscura relative flex-1 space-y-7 overflow-y-auto px-3 py-4">
           {menu.map((seccion) => (
             <div key={seccion.titulo}>
               <p className="mb-2 px-3 text-[0.68rem] font-semibold tracking-[0.12em] text-marca-300/70 uppercase">
