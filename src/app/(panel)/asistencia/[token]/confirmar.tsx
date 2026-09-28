@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Fecha } from "@/components/cliente";
 import { Alerta, Boton, Tarjeta } from "@/components/ui";
 import { registrarPorQr, type ResultadoLectura } from "../actions";
+import { AvisoLectura } from "../lector";
 
 export function ConfirmarLlegada({ token }: { token: string }) {
   const [resultado, setResultado] = useState<ResultadoLectura | null>(null);
@@ -26,6 +27,7 @@ export function ConfirmarLlegada({ token }: { token: string }) {
   const nombre = p ? p.nombre_preferido || `${p.nombres} ${p.apellidos}` : "";
   return (
     <Tarjeta className="space-y-4 p-6 text-center">
+      <AvisoLectura resultado={resultado} />
       {resultado.estado === "registrado" && (
         <>
           <CheckCircle2 className="mx-auto size-12 text-hoja-600" aria-hidden />

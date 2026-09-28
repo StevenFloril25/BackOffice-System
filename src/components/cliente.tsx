@@ -1,8 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, Copy, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
+import { Check, Copy, Eye, EyeOff, Loader2, RotateCcw } from "lucide-react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 
 import { Alerta, claseBoton } from "@/components/ui";
@@ -158,25 +158,35 @@ function haceCuanto(d: Date) {
 
 const sinSuscripcion = () => () => {};
 
+const TONOS_AVISO = {
+  exito: { Icono: Check, circulo: "bg-hoja-100 text-hoja-600", barra: "bg-hoja-500", fondoBarra: "bg-hoja-100" },
+  aviso: { Icono: RotateCcw, circulo: "bg-sol-100 text-sol-600", barra: "bg-sol-400", fondoBarra: "bg-sol-100" },
+};
+
 /**
  * Confirmación en un modal que se cierra solo a los pocos segundos (o al tocarlo).
  * Para avisos que no piden decidir nada, como "Participante registrado".
  *
+ * Aparece al montarse: para mostrarlo otra vez, cambiar su `key`.
  * `quitarDeUrl` borra de la dirección el parámetro que lo hizo aparecer, para que
  * al recargar o volver atrás no salga otra vez.
  */
 export function AvisoBreve({
   titulo,
   detalle,
+  tono = "exito",
   duracion = 2500,
   quitarDeUrl,
 }: {
   titulo: string;
   detalle?: ReactNode;
+  tono?: keyof typeof TONOS_AVISO;
   duracion?: number;
   quitarDeUrl?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const idTitulo = useId();
+  const { Icono, circulo, barra, fondoBarra } = TONOS_AVISO[tono];
   const [abierto, setAbierto] = useState(true);
   const enCliente = useSyncExternalStore(sinSuscripcion, () => true, () => false);
 
@@ -200,22 +210,22 @@ export function AvisoBreve({
   return createPortal(
     <dialog
       ref={ref}
-      aria-labelledby="aviso-breve-titulo"
+      aria-labelledby={idTitulo}
       onClose={() => setAbierto(false)}
       onClick={() => ref.current?.close()}
       className="m-auto w-[calc(100%-2rem)] max-w-xs cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-800 shadow-flotante outline-none backdrop:bg-marca-950/40 backdrop:backdrop-blur-[2px]"
     >
       <div className="animar-entrada flex flex-col items-center px-6 pt-7 pb-6 text-center">
-        <span className="flex size-14 items-center justify-center rounded-full bg-hoja-100 text-hoja-600">
-          <Check className="size-7" strokeWidth={3} aria-hidden />
+        <span className={clsx("flex size-14 items-center justify-center rounded-full", circulo)}>
+          <Icono className="size-7" strokeWidth={3} aria-hidden />
         </span>
-        <p id="aviso-breve-titulo" className="mt-4 text-lg font-semibold text-marca-950">
+        <p id={idTitulo} className="mt-4 text-lg font-semibold text-marca-950">
           {titulo}
         </p>
         {detalle && <div className="mt-1 text-sm text-slate-500">{detalle}</div>}
       </div>
-      <div className="h-1 bg-hoja-100">
-        <div className="h-full bg-hoja-500" style={{ animation: `vaciar ${duracion}ms linear forwards` }} />
+      <div className={clsx("h-1", fondoBarra)}>
+        <div className={clsx("h-full", barra)} style={{ animation: `vaciar ${duracion}ms linear forwards` }} />
       </div>
     </dialog>,
     document.body,

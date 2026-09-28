@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
-import { Fecha } from "@/components/cliente";
+import { AvisoBreve, Fecha } from "@/components/cliente";
 import { Insignia, Tarjeta, claseBoton } from "@/components/ui";
 import { iniciales, tonoAvatar } from "@/lib/utilidades";
 import { registrarManual, registrarPorQr, type ResultadoLectura } from "./actions";
@@ -53,6 +53,8 @@ function sonar(tipo: "ok" | "aviso" | "error") {
 export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[] }) {
   const [personas, setPersonas] = useState(iniciales_);
   const [resultado, setResultado] = useState<ResultadoLectura | null>(null);
+  // Cuenta las lecturas: cada una vuelve a abrir el modal, aunque sea la misma persona.
+  const [lectura, setLectura] = useState(0);
   const [recientes, setRecientes] = useState<{ id: string; nombre: string; barrio: string; hora: string }[]>([]);
   const [camaraActiva, setCamaraActiva] = useState(false);
   const [errorCamara, setErrorCamara] = useState<string | null>(null);
@@ -68,6 +70,11 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
 
   const vigentes = personas.length;
   const llegaron = personas.filter((p) => p.asistio_at).length;
+
+  const mostrar = useCallback((r: ResultadoLectura) => {
+    setResultado(r);
+    setLectura((n) => n + 1);
+  }, []);
 
   const anotar = useCallback((r: ResultadoLectura) => {
     const p = r.participante;
@@ -90,18 +97,18 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
       setProcesando(true);
       try {
         const r = await registrarPorQr(texto);
-        setResultado(r);
+        mostrar(r);
         anotar(r);
         sonar(r.estado === "registrado" ? "ok" : r.estado === "ya_registrado" ? "aviso" : "error");
       } catch {
-        setResultado({ estado: "error", mensaje: "Sin conexión. Vuelve a intentar." });
+        mostrar({ estado: "error", mensaje: "Sin conexión. Vuelve a intentar." });
         sonar("error");
       } finally {
         ocupado.current = false;
         setProcesando(false);
       }
     },
-    [anotar],
+    [anotar, mostrar],
   );
 
   async function encender() {
@@ -167,14 +174,14 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
     iniciarManual(async () => {
       const r = await registrarManual(p.id);
       if (r.error) {
-        setResultado({ estado: "error", mensaje: r.error });
+        mostrar({ estado: "error", mensaje: r.error });
         sonar("error");
         return;
       }
       const hora = r.asistio_at ?? new Date().toISOString();
       setPersonas((lista) => lista.map((x) => (x.id === p.id ? { ...x, asistio_at: hora } : x)));
       setRecientes((l) => [{ id: p.id, nombre: p.nombre, barrio: p.barrio, hora }, ...l].slice(0, 8));
-      setResultado({
+      mostrar({
         estado: "registrado",
         participante: {
           id: p.id,
@@ -197,6 +204,8 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
+      {resultado && <AvisoLectura key={lectura} resultado={resultado} />}
+
       {/* Cámara */}
       <div className="space-y-4 lg:col-span-3">
         <Contador llegaron={llegaron} vigentes={vigentes} />
@@ -324,6 +333,35 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Modal breve de cada llegada. En el celular el panel del resultado queda debajo
+ * de la cámara, fuera de la vista: el modal se ve encima y se cierra solo.
+ */
+export function AvisoLectura({ resultado }: { resultado: ResultadoLectura }) {
+  const p = resultado.participante;
+  if (!p || (resultado.estado !== "registrado" && resultado.estado !== "ya_registrado")) return null;
+  const ya = resultado.estado === "ya_registrado";
+  return (
+    <AvisoBreve
+      tono={ya ? "aviso" : "exito"}
+      titulo={ya ? "Ya está registrado" : "Participante registrado"}
+      duracion={ya ? 3500 : 2500}
+      detalle={
+        <>
+          <span className="block text-base font-semibold text-slate-800">{`${p.nombres} ${p.apellidos}`.trim()}</span>
+          {p.barrio && <span className="block">{p.barrio}</span>}
+          {ya && p.asistio_at && (
+            <span className="mt-2 block text-xs font-medium text-sol-600">
+              Llegó <Fecha iso={p.asistio_at} relativa />
+              {p.registrado_por && ` · registró ${p.registrado_por}`}
+            </span>
+          )}
+        </>
+      }
+    />
   );
 }
 
