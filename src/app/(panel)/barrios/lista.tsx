@@ -1,6 +1,6 @@
 "use client";
 
-import { Church, Mail, MessageCircle, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { Church, Mail, MessageCircle, Pencil, Phone, Plus, Printer, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 
@@ -11,6 +11,11 @@ import { DialogoBarrio, type BarrioEditable } from "./dialogo-barrio";
 
 export interface BarrioConConteo extends BarrioEditable {
   participantes: number;
+}
+
+/** Credenciales con QR para imprimir, en otra pestaña; "Volver" regresa a Barrios. */
+function enlaceCredenciales(filtro: { barrio: string } | { estaca: string }) {
+  return `/credenciales?${new URLSearchParams({ ...filtro, volver: "barrios" })}`;
 }
 
 /** Número local de Ecuador (09xxxxxxxx) a formato internacional para WhatsApp. */
@@ -74,11 +79,19 @@ export function ListaBarrios({
       ) : (
         grupos.map(([estaca, lista]) => (
           <Tarjeta key={estaca}>
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
-              <h2 className="font-semibold text-slate-900">{estaca}</h2>
-              <span className="text-xs font-medium text-slate-500">
-                {lista.length} barrios · {lista.reduce((n, b) => n + b.participantes, 0)} jóvenes
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="font-semibold text-slate-900">{estaca}</h2>
+                <span className="text-xs font-medium text-slate-500">
+                  {lista.length} barrios · {lista.reduce((n, b) => n + b.participantes, 0)} jóvenes
+                </span>
+              </div>
+              {verParticipantes && estaca !== "Sin estaca" && lista.some((b) => b.participantes > 0) && (
+                <a href={enlaceCredenciales({ estaca })} target="_blank" rel="noreferrer" className={claseBoton("secundario", "sm")}>
+                  <Printer className="size-3.5" aria-hidden />
+                  Credenciales de la estaca
+                </a>
+              )}
             </div>
             <ul className="divide-y divide-slate-100">
               {lista.map((b) => (
@@ -126,8 +139,20 @@ export function ListaBarrios({
                       )}
                     </div>
                   </div>
-                  {(puedeEditar || puedeEliminar) && (
-                    <div className="flex gap-1">
+                  {(verParticipantes || puedeEditar || puedeEliminar) && (
+                    <div className="flex flex-wrap gap-1">
+                      {verParticipantes && b.participantes > 0 && (
+                        <a
+                          href={enlaceCredenciales({ barrio: b.id })}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={claseBoton("secundario", "sm")}
+                          title={`Imprimir las ${b.participantes} credenciales con QR de ${b.nombre}`}
+                        >
+                          <Printer className="size-3.5" aria-hidden />
+                          Credenciales
+                        </a>
+                      )}
                       {puedeEditar && (
                         <button
                           type="button"

@@ -24,7 +24,7 @@ const POR_HOJA = 8;
 export default async function Credenciales({
   searchParams,
 }: {
-  searchParams: Promise<{ barrio?: string; estaca?: string; id?: string }>;
+  searchParams: Promise<{ barrio?: string; estaca?: string; id?: string; volver?: string }>;
 }) {
   const sesion = await exigirSesion();
   if (!puede(sesion, "participantes.ver")) {
@@ -55,6 +55,7 @@ export default async function Credenciales({
   const hojas: (typeof tarjetas)[] = [];
   for (let i = 0; i < tarjetas.length; i += POR_HOJA) hojas.push(tarjetas.slice(i, i + POR_HOJA));
   const estacas = [...new Set(barrios.map((b) => b.estaca).filter(Boolean))];
+  const volver = f.volver === "barrios" ? "/barrios" : "/participantes";
 
   return (
     <main className="min-h-screen bg-slate-100 print:bg-white">
@@ -62,9 +63,10 @@ export default async function Credenciales({
 
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden">
         <form className="mx-auto flex max-w-5xl flex-wrap items-center gap-2">
-          <Link href="/participantes" className="mr-2 text-sm font-semibold text-marca-700 hover:text-marca-900">
+          <Link href={volver} className="mr-2 text-sm font-semibold text-marca-700 hover:text-marca-900">
             ← Volver
           </Link>
+          {f.volver && <input type="hidden" name="volver" value={f.volver} />}
           <select name="estaca" defaultValue={f.estaca ?? ""} className="entrada w-auto py-1.5 text-sm" aria-label="Estaca">
             <option value="">Todas las estacas</option>
             {estacas.map((e) => (
@@ -75,11 +77,24 @@ export default async function Credenciales({
           </select>
           <select name="barrio" defaultValue={f.barrio ?? ""} className="entrada w-auto py-1.5 text-sm" aria-label="Barrio">
             <option value="">Todos los barrios</option>
-            {barrios.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nombre}
-              </option>
+            {estacas.map((e) => (
+              <optgroup key={e} label={e}>
+                {barrios
+                  .filter((b) => b.estaca === e)
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.nombre}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
+            {barrios
+              .filter((b) => !b.estaca)
+              .map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.nombre}
+                </option>
+              ))}
           </select>
           <button type="submit" className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold hover:bg-slate-50">
             Filtrar
