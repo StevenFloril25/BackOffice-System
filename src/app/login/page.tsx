@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { History, ShieldCheck, Users } from "lucide-react";
 
+import { SolResplandor } from "@/components/sol";
 import { FormularioLogin } from "./formulario";
 
 export const metadata: Metadata = { title: "Ingresar" };
@@ -29,8 +30,7 @@ export default async function PaginaLogin({
     <main className="flex min-h-screen">
       {/* Panel de marca */}
       <section className="relative hidden w-[46%] max-w-[640px] overflow-hidden bg-gradient-to-br from-marca-800 via-marca-700 to-marca-950 text-white lg:flex lg:flex-col">
-        <div aria-hidden className="absolute -top-28 -right-24 size-96 rounded-full bg-sol-400 opacity-30 blur-3xl" />
-        <div aria-hidden className="absolute -top-20 -right-16 size-72 rounded-full bg-gradient-to-br from-sol-200 to-sol-400" />
+        <SolResplandor id="sol-login" className="absolute top-0 right-0 size-[26rem] xl:size-[30rem]" />
         <svg aria-hidden viewBox="0 0 600 260" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-56 w-full">
           <path d="M0 150 C 160 60, 320 250, 600 110 L 600 260 L 0 260 Z" className="fill-hoja-500/35" />
           <path d="M0 200 C 180 120, 360 270, 600 170 L 600 260 L 0 260 Z" className="fill-marca-300/25" />

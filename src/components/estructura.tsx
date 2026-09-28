@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { Icono } from "@/components/iconos";
+import { SolResplandor } from "@/components/sol";
 import { Avatar } from "@/components/ui";
 import type { SeccionMenu } from "@/lib/navegacion";
 
@@ -52,8 +53,8 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
           abierto ? "translate-x-0 shadow-flotante" : "-translate-x-full",
         )}
       >
-        {/* Brillo del sol, sutil, como en el logo */}
-        <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 size-44 rounded-full bg-sol-400/25 blur-3xl" />
+        {/* El mismo sol de líneas, pequeño y tenue */}
+        <SolResplandor id="sol-menu" className="absolute top-0 right-0 size-40 opacity-40" />
 
         <div className="relative flex h-20 items-center justify-between px-5">
           <Marca />
