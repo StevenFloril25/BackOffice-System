@@ -159,6 +159,70 @@ function haceCuanto(d: Date) {
 const sinSuscripcion = () => () => {};
 
 /**
+ * Confirmación en un modal que se cierra solo a los pocos segundos (o al tocarlo).
+ * Para avisos que no piden decidir nada, como "Participante registrado".
+ *
+ * `quitarDeUrl` borra de la dirección el parámetro que lo hizo aparecer, para que
+ * al recargar o volver atrás no salga otra vez.
+ */
+export function AvisoBreve({
+  titulo,
+  detalle,
+  duracion = 2500,
+  quitarDeUrl,
+}: {
+  titulo: string;
+  detalle?: ReactNode;
+  duracion?: number;
+  quitarDeUrl?: string;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [abierto, setAbierto] = useState(true);
+  const enCliente = useSyncExternalStore(sinSuscripcion, () => true, () => false);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d || !abierto) return;
+    if (!d.open) d.showModal();
+    const t = setTimeout(() => d.close(), duracion);
+    return () => clearTimeout(t);
+  }, [abierto, enCliente, duracion]);
+
+  useEffect(() => {
+    if (!quitarDeUrl) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(quitarDeUrl)) return;
+    url.searchParams.delete(quitarDeUrl);
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }, [quitarDeUrl]);
+
+  if (!enCliente || !abierto) return null;
+  return createPortal(
+    <dialog
+      ref={ref}
+      aria-labelledby="aviso-breve-titulo"
+      onClose={() => setAbierto(false)}
+      onClick={() => ref.current?.close()}
+      className="m-auto w-[calc(100%-2rem)] max-w-xs cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-800 shadow-flotante backdrop:bg-marca-950/40 backdrop:backdrop-blur-[2px]"
+    >
+      <div className="animar-entrada flex flex-col items-center px-6 pt-7 pb-6 text-center">
+        <span className="flex size-14 items-center justify-center rounded-full bg-hoja-100 text-hoja-600">
+          <Check className="size-7" strokeWidth={3} aria-hidden />
+        </span>
+        <p id="aviso-breve-titulo" className="mt-4 text-lg font-semibold text-marca-950">
+          {titulo}
+        </p>
+        {detalle && <div className="mt-1 text-sm text-slate-500">{detalle}</div>}
+      </div>
+      <div className="h-1 bg-hoja-100">
+        <div className="h-full bg-hoja-500" style={{ animation: `vaciar ${duracion}ms linear forwards` }} />
+      </div>
+    </dialog>,
+    document.body,
+  );
+}
+
+/**
  * Diálogo modal nativo (<dialog>): foco atrapado, Esc para cerrar y fondo
  * inerte sin librerías.
  *

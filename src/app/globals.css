@@ -84,3 +84,13 @@
 .animar-entrada {
   animation: aparecer 0.25s ease-out both;
 }
+
+/* Barra de cuenta regresiva de un aviso que se cierra solo. */
+@keyframes vaciar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0;
+  }
+}

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { Fecha } from "@/components/cliente";
+import { AvisoBreve, Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
-import { Alerta, EncabezadoPagina, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
+import { EncabezadoPagina, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { urlFoto } from "@/lib/fotos";
 import { qrSvg, urlAsistencia } from "@/lib/qr";
 import { CAMPOS_SALUD, edad, listarBarriosOpciones, nombreCompleto, obtenerParticipante } from "@/lib/participantes";
@@ -87,11 +87,7 @@ export default async function FichaParticipante({
         }
       />
 
-      {aviso === "creado" && (
-        <div className="mb-6">
-          <Alerta tipo="exito">Participante registrado.</Alerta>
-        </div>
-      )}
+      {aviso === "creado" && <AvisoBreve titulo="Participante registrado" detalle={nombreCompleto(p)} quitarDeUrl="aviso" />}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
