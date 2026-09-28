@@ -72,5 +72,9 @@ for (const archivo of archivos) {
   }
 }
 
+// La API de Supabase (PostgREST) guarda en caché el esquema: sin avisarle, las
+// tablas y funciones nuevas no existen para la aplicación hasta que se recargue.
+if (corridas) await client.query("notify pgrst, 'reload schema'");
+
 console.log(corridas ? `Listo: ${corridas} migración(es) aplicada(s).` : "Nada pendiente.");
 await client.end();

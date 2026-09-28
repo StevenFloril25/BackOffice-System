@@ -132,14 +132,25 @@ export async function crearUsuario(_previo: EstadoAccion | undefined, formData: 
     password: clave,
     email_confirm: true,
     user_metadata: { full_name: datos.data.full_name },
-    // app_metadata: solo la service role puede escribirlo; de ahí toma el
-    // disparador handle_new_user el rol inicial del perfil.
-    app_metadata: { role_key: rol.key, must_change_password: pedirCambio, created_by: sesion.id },
   });
   if (error || !data.user) return { error: mensajeAuth(error?.message ?? "No se pudo crear la cuenta."), valores };
 
-  if (datos.data.phone) {
-    await admin.from("profiles").update({ phone: datos.data.phone }).eq("id", data.user.id);
+  // El disparador de Auth solo crea el perfil vacío; el rol y las marcas se
+  // asignan aquí (ver 0003_perfil_sin_metadata.sql). Si falla, se deshace la
+  // cuenta: una cuenta sin rol confunde más que un error visible.
+  const { error: errorPerfil } = await admin
+    .from("profiles")
+    .update({
+      full_name: datos.data.full_name,
+      phone: datos.data.phone,
+      role_id: rol.id,
+      must_change_password: pedirCambio,
+      created_by: sesion.id,
+    })
+    .eq("id", data.user.id);
+  if (errorPerfil) {
+    await admin.auth.admin.deleteUser(data.user.id);
+    return { error: "No se pudo asignar el rol; la cuenta no se creó. Intenta de nuevo.", valores };
   }
 
   await registrarAuditoria(sesion, {
