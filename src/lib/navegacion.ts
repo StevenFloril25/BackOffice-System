@@ -29,7 +29,7 @@ export const MENU: SeccionMenu[] = [
     items: [
       { href: "/mi-compania", etiqueta: "Mi compañía", icono: "users-round", permiso: "companias.ver_propia", ocultarAlAdmin: true },
       { href: "/participantes", etiqueta: "Participantes", icono: "id-card", permiso: "participantes.ver" },
-      { href: "/consejeros", etiqueta: "Consejeros", icono: "heart-handshake", permiso: "consejeros.ver" },
+      { href: "/consejeros", etiqueta: "Consejeros y coordinadores", icono: "heart-handshake", permiso: "consejeros.ver" },
       { href: "/companias", etiqueta: "Compañías", icono: "flag", permiso: "companias.ver" },
       { href: "/habitaciones", etiqueta: "Habitaciones", icono: "bed-double", permiso: "habitaciones.ver" },
       { href: "/asistencia", etiqueta: "Registro de asistencia", icono: "scan-line", permiso: "asistencia.registrar" },

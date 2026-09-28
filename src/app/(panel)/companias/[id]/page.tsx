@@ -6,13 +6,14 @@ import { EncabezadoPagina } from "@/components/ui";
 import { urlsFotos } from "@/lib/fotos";
 import {
   consejerosLibres,
+  coordinadoresLibres,
   jovenesDeCompania,
   jovenesSinCompania,
   nombreCompania,
   obtenerCompania,
 } from "@/lib/organizacion";
 import { exigirSesion, puede } from "@/lib/sesion";
-import { AccionesCompania, ConsejerosCompania, JovenesCompania } from "./gestion";
+import { AccionesCompania, ConsejerosCompania, CoordinadoresCompania, JovenesCompania } from "./gestion";
 
 export const metadata: Metadata = { title: "Compañía" };
 
@@ -26,15 +27,17 @@ export default async function FichaCompania({ params }: { params: Promise<{ id: 
   if (!UUID.test(id)) notFound();
 
   const editable = puede(sesion, "companias.editar");
-  const [c, jovenes, libresH, libresM, candidatos] = await Promise.all([
+  const [c, jovenes, libresH, libresM, candidatos, coordLibres] = await Promise.all([
     obtenerCompania(id),
     jovenesDeCompania(id),
-    editable ? consejerosLibres("Hombre", "compania") : Promise.resolve([]),
-    editable ? consejerosLibres("Mujer", "compania") : Promise.resolve([]),
+    editable ? consejerosLibres("Hombre", "compania", id) : Promise.resolve([]),
+    editable ? consejerosLibres("Mujer", "compania", id) : Promise.resolve([]),
     editable ? jovenesSinCompania() : Promise.resolve([]),
+    editable ? coordinadoresLibres() : Promise.resolve([]),
   ]);
   if (!c) notFound();
-  const fotos = await urlsFotos([c.consejero?.foto_path, c.consejera?.foto_path]);
+  const fotos = await urlsFotos([c.consejero?.foto_path, c.consejera?.foto_path, ...c.coordinadores.map((k) => k.foto_path)]);
+  const conFoto = <T extends { foto_path: string | null }>(k: T) => ({ ...k, foto: k.foto_path ? (fotos[k.foto_path] ?? null) : null });
 
   return (
     <>
@@ -53,13 +56,21 @@ export default async function FichaCompania({ params }: { params: Promise<{ id: 
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+        <div className="space-y-6 lg:col-span-1">
           <ConsejerosCompania
             companiaId={c.id}
-            consejero={c.consejero ? { ...c.consejero, foto: c.consejero.foto_path ? (fotos[c.consejero.foto_path] ?? null) : null } : null}
-            consejera={c.consejera ? { ...c.consejera, foto: c.consejera.foto_path ? (fotos[c.consejera.foto_path] ?? null) : null } : null}
+            consejero={c.consejero ? conFoto(c.consejero) : null}
+            consejera={c.consejera ? conFoto(c.consejera) : null}
             libresH={libresH}
             libresM={libresM}
+            editable={editable}
+          />
+          <CoordinadoresCompania
+            companiaId={c.id}
+            coordinadores={c.coordinadores.map(conFoto)}
+            libres={coordLibres}
+            faltaConsejero={!c.consejero}
+            faltaConsejera={!c.consejera}
             editable={editable}
           />
         </div>

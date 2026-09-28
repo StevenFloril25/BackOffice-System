@@ -6,7 +6,7 @@ import { listarBarriosOpciones } from "@/lib/participantes";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { FormularioConsejero } from "../formulario";
 
-export const metadata: Metadata = { title: "Nuevo consejero" };
+export const metadata: Metadata = { title: "Nuevo consejero o coordinador" };
 
 export default async function NuevoConsejero() {
   const sesion = await exigirSesion();
@@ -17,8 +17,8 @@ export default async function NuevoConsejero() {
   return (
     <>
       <EncabezadoPagina
-        titulo="Nuevo consejero"
-        descripcion="Al registrarlo se le crea su cuenta con el rol Consejero: podrá ver las habitaciones y su compañía. La compañía y la cama se le asignan después desde esas páginas."
+        titulo="Nuevo consejero o coordinador"
+        descripcion="Al registrarlo se le crea su cuenta con el rol de su función (Consejero o Coordinador auxiliar): podrá ver las habitaciones y su compañía. La compañía y la cama se le asignan después desde esas páginas."
         migas={[{ etiqueta: "Consejeros", href: "/consejeros" }, { etiqueta: "Nuevo" }]}
       />
       <FormularioConsejero id={null} inicial={{}} barrios={barrios} editable puedeCrearBarrio={puede(sesion, "barrios.crear")} />

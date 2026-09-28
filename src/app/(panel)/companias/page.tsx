@@ -19,6 +19,7 @@ export default async function PaginaCompanias({ searchParams }: { searchParams: 
   const { aviso } = await searchParams;
   const [companias, resumen] = await Promise.all([listarCompanias(), resumenPorCompania()]);
   const fotos = await urlsFotos(companias.flatMap((c) => [c.consejero?.foto_path, c.consejera?.foto_path]));
+  const conCoordinador = companias.filter((c) => c.coordinadores.length > 0).length;
   const siguiente = Math.max(0, ...companias.map((c) => c.numero)) + 1;
   const completas = companias.filter((c) => c.consejero && c.consejera).length;
   const asignados = resumen.total - resumen.sinCompania;
@@ -39,7 +40,7 @@ export default async function PaginaCompanias({ searchParams }: { searchParams: 
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Indicador etiqueta="Compañías" valor={companias.length} />
-        <Indicador etiqueta="Con pareja completa" valor={completas} nota={`de ${companias.length}`} />
+        <Indicador etiqueta="Con pareja completa" valor={completas} nota={`${conCoordinador} con coordinador auxiliar`} />
         <Indicador etiqueta="Jóvenes asignados" valor={asignados} nota={`de ${resumen.total}`} />
         <Indicador etiqueta="Sin compañía" valor={resumen.sinCompania} tono={resumen.sinCompania ? "sol" : undefined} />
       </div>
@@ -76,6 +77,11 @@ export default async function PaginaCompanias({ searchParams }: { searchParams: 
                   <div className="space-y-2.5 px-5 py-4">
                     <Lugar etiqueta="Consejero" persona={c.consejero} fotos={fotos} />
                     <Lugar etiqueta="Consejera" persona={c.consejera} fotos={fotos} />
+                    <p className="truncate pl-11 text-xs text-slate-500">
+                      {c.coordinadores.length
+                        ? `Coordinación: ${c.coordinadores.map((k) => nombreCompleto(k)).join(", ")}`
+                        : "Sin coordinador auxiliar"}
+                    </p>
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
                     <span className="font-semibold text-slate-700">

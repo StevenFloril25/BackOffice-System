@@ -5,13 +5,13 @@ import { ChevronRight, HeartHandshake, Search, UserPlus } from "lucide-react";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, Avatar, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, Tarjeta, claseBoton } from "@/components/ui";
 import { urlsFotos } from "@/lib/fotos";
-import { companiaDeConsejeros, listarConsejeros, nombreCompania, rolConsejero } from "@/lib/organizacion";
+import { companiaDeConsejeros, listarConsejeros, nombreCompania, nombreFuncion } from "@/lib/organizacion";
 import { edad, nombreCompleto } from "@/lib/participantes-comun";
 import { exigirSesion, puede } from "@/lib/sesion";
 
-export const metadata: Metadata = { title: "Consejeros" };
+export const metadata: Metadata = { title: "Consejeros y coordinadores" };
 
-type Filtros = { q?: string; sexo?: string; compania?: string; aviso?: string };
+type Filtros = { q?: string; sexo?: string; funcion?: string; compania?: string; aviso?: string };
 
 const sinTildes = (t: string) => t.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
@@ -29,27 +29,29 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
       if (!texto.split(/\s+/).every((t) => pajar.includes(t))) return false;
     }
     if (f.sexo && c.sexo !== f.sexo) return false;
+    if (f.funcion && c.funcion !== f.funcion) return false;
     if (f.compania === "si" && !companias[c.id]) return false;
     if (f.compania === "no" && companias[c.id]) return false;
     return true;
   });
-  const hayFiltros = Boolean(texto || f.sexo || f.compania);
+  const hayFiltros = Boolean(texto || f.sexo || f.funcion || f.compania);
   const fotos = await urlsFotos(lista.map((c) => c.foto_path));
 
-  const consejeros = todos.filter((c) => c.sexo === "Hombre").length;
-  const consejeras = todos.filter((c) => c.sexo === "Mujer").length;
+  const consejeros = todos.filter((c) => c.funcion === "consejero" && c.sexo === "Hombre").length;
+  const consejeras = todos.filter((c) => c.funcion === "consejero" && c.sexo === "Mujer").length;
+  const coordinadores = todos.filter((c) => c.funcion === "coordinador").length;
   const sinCompania = todos.filter((c) => !companias[c.id]).length;
 
   return (
     <>
       <EncabezadoPagina
-        titulo="Consejeros"
-        descripcion="Consejeros y consejeras de la sesión. Cada compañía lleva un consejero y una consejera, y en cada habitación duerme al menos uno."
+        titulo="Consejeros y coordinadores"
+        descripcion="Cada compañía lleva un consejero, una consejera y normalmente un coordinador auxiliar, que los ayuda y puede cubrir a uno de ellos."
         acciones={
           puede(sesion, "consejeros.crear") && (
             <EnlaceBoton href="/consejeros/nuevo">
               <UserPlus className="size-4" aria-hidden />
-              Nuevo consejero
+              Registrar
             </EnlaceBoton>
           )
         }
@@ -62,22 +64,27 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <Indicador etiqueta="En total" valor={todos.length} />
-        <Indicador etiqueta="Consejeros" valor={consejeros} href="/consejeros?sexo=Hombre" />
-        <Indicador etiqueta="Consejeras" valor={consejeras} href="/consejeros?sexo=Mujer" />
+        <Indicador etiqueta="Consejeros" valor={consejeros} href="/consejeros?funcion=consejero&sexo=Hombre" />
+        <Indicador etiqueta="Consejeras" valor={consejeras} href="/consejeros?funcion=consejero&sexo=Mujer" />
+        <Indicador etiqueta="Coordinadores auxiliares" valor={coordinadores} href="/consejeros?funcion=coordinador" />
         <Indicador etiqueta="Sin compañía" valor={sinCompania} href="/consejeros?compania=no" />
       </div>
 
       <Tarjeta>
-        <form className="grid gap-3 border-b border-slate-100 p-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]" role="search">
+        <form className="grid gap-3 border-b border-slate-100 p-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]" role="search">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <input name="q" defaultValue={f.q} placeholder="Nombre, teléfono, correo o barrio" aria-label="Buscar" className="entrada pl-10" />
           </div>
-          <select name="sexo" defaultValue={f.sexo ?? ""} aria-label="Consejero o consejera" className="entrada lg:w-40">
-            <option value="">Todos</option>
-            <option value="Hombre">Consejeros</option>
-            <option value="Mujer">Consejeras</option>
+          <select name="funcion" defaultValue={f.funcion ?? ""} aria-label="Función" className="entrada lg:w-48">
+            <option value="">Todas las funciones</option>
+            <option value="consejero">Consejeros</option>
+            <option value="coordinador">Coordinadores auxiliares</option>
+          </select>
+          <select name="sexo" defaultValue={f.sexo ?? ""} aria-label="Sexo" className="entrada lg:w-36">
+            <option value="">Hombres y mujeres</option>
+            <option value="Hombre">Hombres</option>
+            <option value="Mujer">Mujeres</option>
           </select>
           <select name="compania" defaultValue={f.compania ?? ""} aria-label="Compañía" className="entrada lg:w-44">
             <option value="">Con y sin compañía</option>
@@ -99,14 +106,14 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
         {lista.length === 0 ? (
           <EstadoVacio
             icono={<HeartHandshake className="size-5" />}
-            titulo={hayFiltros ? "Nadie coincide con el filtro" : "Todavía no hay consejeros"}
-            descripcion={hayFiltros ? "Prueba con otra búsqueda." : "Registra a los consejeros y consejeras para armar las compañías."}
+            titulo={hayFiltros ? "Nadie coincide con el filtro" : "Todavía no hay consejeros ni coordinadores"}
+            descripcion={hayFiltros ? "Prueba con otra búsqueda." : "Regístralos para armar las compañías."}
             accion={
               !hayFiltros &&
               puede(sesion, "consejeros.crear") && (
                 <EnlaceBoton href="/consejeros/nuevo">
                   <UserPlus className="size-4" aria-hidden />
-                  Nuevo consejero
+                  Registrar
                 </EnlaceBoton>
               )
             }
@@ -117,7 +124,7 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    <th className="px-5 py-3">Consejero</th>
+                    <th className="px-5 py-3">Nombre</th>
                     <th className="px-5 py-3">Compañía</th>
                     <th className="px-5 py-3">Habitación</th>
                     <th className="px-5 py-3">Teléfono</th>
@@ -138,7 +145,7 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
                                 {nombreCompleto(c)}
                               </span>
                               <span className="block truncate text-xs text-slate-500">
-                                {[rolConsejero(c.sexo), e !== null ? `${e} años` : null, c.barrio?.nombre].filter(Boolean).join(" · ")}
+                                {[nombreFuncion(c.funcion, c.sexo), e !== null ? `${e} años` : null, c.barrio?.nombre].filter(Boolean).join(" · ")}
                               </span>
                             </span>
                           </Link>
@@ -189,7 +196,7 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-slate-900">{nombreCompleto(c)}</p>
                         <p className="truncate text-sm text-slate-500">
-                          {rolConsejero(c.sexo)} · {compania ? nombreCompania(compania) : "Sin compañía"}
+                          {nombreFuncion(c.funcion, c.sexo)} · {compania ? nombreCompania(compania) : "Sin compañía"}
                         </p>
                       </div>
                       <ChevronRight className="size-4 text-slate-300" aria-hidden />
@@ -200,7 +207,7 @@ export default async function PaginaConsejeros({ searchParams }: { searchParams:
             </ul>
 
             <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-              {hayFiltros ? `${lista.length} de ${todos.length} consejeros` : `${todos.length} consejeros`}
+              {hayFiltros ? `${lista.length} de ${todos.length}` : `${todos.length} en total`}
             </p>
           </>
         )}

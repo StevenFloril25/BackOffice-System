@@ -7,7 +7,7 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import { AvisoBreve, Dialogo } from "@/components/cliente";
 import { SelectorPersonas, type Elegible } from "@/components/selector-personas";
 import { Alerta, Avatar, Boton, EncabezadoTarjeta, Tarjeta, claseBoton } from "@/components/ui";
-import { rolConsejero, type Integrante, type Sexo, type TipoHabitacion } from "@/lib/organizacion-comun";
+import type { Integrante, Sexo, TipoHabitacion } from "@/lib/organizacion-comun";
 import { agregarOcupantes, eliminarHabitacion, quitarOcupante } from "../actions";
 import { DialogoHabitacion, useAviso, type EdificioEditable, type HabitacionEditable } from "../dialogos";
 import { Camas, ChipCompania } from "../grafico";
@@ -105,8 +105,7 @@ export function OcupantesHabitacion({
 
   const esLideres = tipo === "lideres";
   const libres = Math.max(0, capacidad - ocupantes.length);
-  const rol = rolConsejero(sexo);
-  const quienes = esLideres ? (sexo === "Mujer" ? "consejeras" : "consejeros") : sexo === "Mujer" ? "jóvenes mujeres" : "jóvenes hombres";
+  const quienes = esLideres ? "líderes" : sexo === "Mujer" ? "jóvenes mujeres" : "jóvenes hombres";
 
   const porCompania = useMemo(() => {
     const m: Record<number, number> = {};
@@ -145,7 +144,7 @@ export function OcupantesHabitacion({
               ))}
           </div>
         )}
-        {esLideres && ocupantes.length === 0 && <Alerta tipo="aviso">Todavía no hay {rol.toLowerCase()} en este piso.</Alerta>}
+        {esLideres && ocupantes.length === 0 && <Alerta tipo="aviso">Todavía no hay líderes en este piso.</Alerta>}
       </Tarjeta>
 
       <Tarjeta className="lg:col-span-2">
@@ -156,7 +155,7 @@ export function OcupantesHabitacion({
             libres > 0 && (
               <Boton tamano="sm" onClick={() => setSelector(true)}>
                 <UserPlus className="size-3.5" aria-hidden />
-                {esLideres ? `Agregar ${rol.toLowerCase()}` : "Agregar jóvenes"}
+                {esLideres ? "Agregar líderes" : "Agregar jóvenes"}
               </Boton>
             )
           }
@@ -184,7 +183,9 @@ export function OcupantesHabitacion({
                   ) : (
                     <p className="truncate text-sm font-semibold text-slate-800">{o.nombre}</p>
                   )}
-                  <p className="truncate text-xs text-slate-500">{[o.edad !== null ? `${o.edad} años` : null, o.barrio].filter(Boolean).join(" · ") || "—"}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    {[o.tipo === "consejero" ? o.extra : null, o.edad !== null ? `${o.edad} años` : null, o.barrio].filter(Boolean).join(" · ") || "—"}
+                  </p>
                 </div>
                 {o.compania ? <ChipCompania numero={o.compania} /> : <span className="text-xs text-slate-400">Sin compañía</span>}
                 {editable && (
@@ -208,10 +209,10 @@ export function OcupantesHabitacion({
       <SelectorPersonas
         abierto={selector}
         alCerrar={() => setSelector(false)}
-        titulo={esLideres ? `Agregar ${rol.toLowerCase()}` : "Agregar jóvenes"}
+        titulo={esLideres ? "Agregar líderes" : "Agregar jóvenes"}
         descripcion={
           esLideres
-            ? `${sexo === "Mujer" ? "Consejeras" : "Consejeros"} que todavía no tienen cama.`
+            ? `${sexo === "Mujer" ? "Consejeras y coordinadoras" : "Consejeros y coordinadores"} que todavía no tienen cama.`
             : "Jóvenes sin cama. Filtra por compañía para que duerman en el mismo piso."
         }
         personas={candidatos}

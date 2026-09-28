@@ -1,9 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { LogOut, Menu, UserRound, X } from "lucide-react";
+import { Loader2, LogOut, Menu, UserRound, X } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
@@ -92,7 +92,8 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
                           nombre={item.icono}
                           className={clsx("size-[1.15rem]", activo ? "text-sol-400" : "text-marca-300/80 group-hover:text-marca-200")}
                         />
-                        {item.etiqueta}
+                        <span className="min-w-0 flex-1">{item.etiqueta}</span>
+                        <Cargando />
                       </Link>
                     </li>
                   );
@@ -154,4 +155,14 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
       </span>
     </Link>
   );
+}
+
+/**
+ * Señal de "cargando" en el enlace del menú que se tocó. El panel no tiene
+ * loading.tsx (ver (panel)/layout.tsx): mientras llega la página nueva se ve la
+ * anterior, y esto avisa que el toque sí se registró.
+ */
+function Cargando() {
+  const { pending } = useLinkStatus();
+  return pending ? <Loader2 aria-hidden className="size-3.5 shrink-0 animate-spin text-marca-200" /> : null;
 }

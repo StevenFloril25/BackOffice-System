@@ -5,7 +5,7 @@ import { BedDouble, Phone, UsersRound } from "lucide-react";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Avatar, EncabezadoPagina, EncabezadoTarjeta, EstadoVacio, Tarjeta } from "@/components/ui";
 import { urlsFotos } from "@/lib/fotos";
-import { miCompania, nombreCompania, type ConsejeroResumen } from "@/lib/organizacion";
+import { miCompania, nombreCompania, nombreFuncion, type ConsejeroResumen } from "@/lib/organizacion";
 import { nombreCompleto } from "@/lib/participantes-comun";
 import { exigirSesion, puede } from "@/lib/sesion";
 
@@ -36,7 +36,7 @@ export default async function MiCompania() {
   }
 
   const { compania: c, jovenes } = datos;
-  const fotos = await urlsFotos([c.consejero?.foto_path, c.consejera?.foto_path]);
+  const fotos = await urlsFotos([c.consejero?.foto_path, c.consejera?.foto_path, ...c.coordinadores.map((k) => k.foto_path)]);
   const mujeres = jovenes.filter((j) => j.sexo === "Mujer").length;
   const hombres = jovenes.filter((j) => j.sexo === "Hombre").length;
   const verFichas = puede(sesion, "participantes.ver");
@@ -50,10 +50,13 @@ export default async function MiCompania() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Tarjeta className="h-fit">
-          <EncabezadoTarjeta titulo="Consejeros" />
+          <EncabezadoTarjeta titulo="Líderes" />
           <ul className="divide-y divide-slate-100">
             <Lugar etiqueta="Consejero" persona={c.consejero} fotos={fotos} />
             <Lugar etiqueta="Consejera" persona={c.consejera} fotos={fotos} />
+            {c.coordinadores.map((k) => (
+              <Lugar key={k.id} etiqueta={nombreFuncion("coordinador", k.sexo)} persona={k} fotos={fotos} />
+            ))}
           </ul>
         </Tarjeta>
 
@@ -114,7 +117,10 @@ function Lugar({ etiqueta, persona, fotos }: { etiqueta: string; persona: Consej
           <Avatar texto={nombreCompleto(persona)} src={persona.foto_path ? fotos[persona.foto_path] : null} />
           <div className="min-w-0">
             <p className="truncate font-semibold text-slate-800">{nombreCompleto(persona)}</p>
-            <p className="text-xs text-slate-500">{etiqueta}</p>
+            <p className="text-xs text-slate-500">
+              {etiqueta}
+              {persona.funcion === "coordinador" && etiqueta.startsWith("Consejer") && " · coordinador auxiliar que cubre el lugar"}
+            </p>
           </div>
         </>
       ) : (

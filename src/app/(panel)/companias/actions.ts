@@ -125,6 +125,17 @@ export async function asignarConsejero(
   if (consejeroId !== null && !z.uuid().safeParse(consejeroId).success) return { error: "Elige de la lista." };
 
   const admin = createAdminClient();
+  if (consejeroId) {
+    // Un coordinador de esta compañía puede cubrir el lugar: deja de coordinarla
+    // y pasa a ese lugar. Si coordina otra, primero hay que quitarlo de allá.
+    const { data: persona } = await admin.from("consejeros").select("coordina_compania_id").eq("id", consejeroId).maybeSingle();
+    if (persona?.coordina_compania_id && persona.coordina_compania_id !== companiaId) {
+      return { error: "Coordina otra compañía: quítalo de allá primero." };
+    }
+    if (persona?.coordina_compania_id) {
+      await admin.from("consejeros").update({ coordina_compania_id: null }).eq("id", consejeroId);
+    }
+  }
   const { data, error } = await admin
     .from("companias")
     .update(lugar === "consejero" ? { consejero_id: consejeroId } : { consejera_id: consejeroId })
@@ -152,6 +163,62 @@ export async function asignarConsejero(
   });
   refrescar(companiaId);
   return { ok: consejeroId ? `${lugar === "consejero" ? "Consejero asignado" : "Consejera asignada"}.` : "Lugar libre." };
+}
+
+/** Pone a un coordinador auxiliar en la compañía (normalmente uno; rara vez dos). */
+export async function asignarCoordinador(companiaId: string, personaId: string): Promise<EstadoCompania> {
+  const permiso = await validarPermiso("companias.editar");
+  if (!permiso.ok) return { error: permiso.error };
+  if (!z.uuid().safeParse(personaId).success) return { error: "Elige de la lista." };
+
+  const admin = createAdminClient();
+  const { data: compania } = await admin.from("companias").select("numero, nombre").eq("id", companiaId).maybeSingle();
+  if (!compania) return { error: "La compañía no existe." };
+  const { data, error } = await admin
+    .from("consejeros")
+    .update({ coordina_compania_id: companiaId })
+    .eq("id", personaId)
+    .eq("funcion", "coordinador")
+    .is("coordina_compania_id", null)
+    .select("nombres, apellidos")
+    .maybeSingle();
+  // Quien ya ocupa el lugar de consejero en una compañía lo frena la base.
+  if (error) return { error: mensajeBd(error, "No se pudo asignar.") };
+  if (!data) return { error: "Ya coordina otra compañía o no es coordinador auxiliar." };
+
+  await registrarAuditoria(permiso.sesion, {
+    accion: "compania.coordinador",
+    entidad: "compania",
+    entidadId: companiaId,
+    resumen: `Asignó a ${data.nombres} ${data.apellidos} como coordinador auxiliar de la ${nombreCompania(compania)}`,
+  });
+  refrescar(companiaId);
+  return { ok: "Coordinador asignado." };
+}
+
+export async function quitarCoordinador(companiaId: string, personaId: string): Promise<EstadoCompania> {
+  const permiso = await validarPermiso("companias.editar");
+  if (!permiso.ok) return { error: permiso.error };
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("consejeros")
+    .update({ coordina_compania_id: null })
+    .eq("id", personaId)
+    .eq("coordina_compania_id", companiaId)
+    .select("nombres, apellidos")
+    .maybeSingle();
+  if (error) return { error: mensajeBd(error, "No se pudo quitar.") };
+  if (!data) return { error: "Ya no coordinaba esta compañía." };
+
+  await registrarAuditoria(permiso.sesion, {
+    accion: "compania.coordinador",
+    entidad: "compania",
+    entidadId: companiaId,
+    resumen: `Quitó a ${data.nombres} ${data.apellidos} como coordinador auxiliar de su compañía`,
+  });
+  refrescar(companiaId);
+  return { ok: "Coordinador quitado." };
 }
 
 /**

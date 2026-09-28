@@ -7,9 +7,9 @@ import { useCallback, useState, useTransition } from "react";
 import { AvisoBreve, Dialogo } from "@/components/cliente";
 import { SelectorPersonas, type Elegible } from "@/components/selector-personas";
 import { Alerta, Avatar, Boton, EncabezadoTarjeta, EstadoVacio, Insignia, Tarjeta, claseBoton } from "@/components/ui";
-import type { ConsejeroResumen, Integrante } from "@/lib/organizacion-comun";
+import { nombreFuncion, type ConsejeroResumen, type Integrante } from "@/lib/organizacion-comun";
 import { nombreCompleto } from "@/lib/participantes-comun";
-import { agregarJovenes, asignarConsejero, eliminarCompania, quitarJoven } from "../actions";
+import { agregarJovenes, asignarConsejero, asignarCoordinador, eliminarCompania, quitarCoordinador, quitarJoven } from "../actions";
 import { DialogoCompania, type CompaniaEditable } from "../dialogos";
 
 type Aviso = { n: number; texto: string } | null;
@@ -160,9 +160,14 @@ function Lugar({
       {actual ? (
         <div className="flex items-center gap-3">
           <Avatar texto={nombreCompleto(actual)} src={actual.foto} />
-          <Link href={`/consejeros/${actual.id}`} className="min-w-0 flex-1 truncate font-semibold text-slate-800 hover:text-marca-700">
-            {nombreCompleto(actual)}
-          </Link>
+          <div className="min-w-0 flex-1">
+            <Link href={`/consejeros/${actual.id}`} className="block truncate font-semibold text-slate-800 hover:text-marca-700">
+              {nombreCompleto(actual)}
+            </Link>
+            {actual.funcion === "coordinador" && (
+              <p className="text-xs text-slate-500">{nombreFuncion("coordinador", actual.sexo)} · cubre el lugar</p>
+            )}
+          </div>
           {editable && (
             <button
               type="button"
@@ -214,6 +219,136 @@ function Lugar({
           )
         ))}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Coordinadores auxiliares
+// ---------------------------------------------------------------------------
+
+export function CoordinadoresCompania({
+  companiaId,
+  coordinadores,
+  libres,
+  faltaConsejero,
+  faltaConsejera,
+  editable,
+}: {
+  companiaId: string;
+  coordinadores: ConsejeroConFoto[];
+  libres: Elegible[];
+  faltaConsejero: boolean;
+  faltaConsejera: boolean;
+  editable: boolean;
+}) {
+  const [elegido, setElegido] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pendiente, iniciar] = useTransition();
+  const [aviso, avisar] = useAviso();
+
+  const ejecutar = (accion: () => Promise<{ ok?: string; error?: string }>) =>
+    iniciar(async () => {
+      setError(null);
+      const r = await accion();
+      if (r.error) setError(r.error);
+      else {
+        setElegido("");
+        avisar(r.ok ?? "Listo.");
+      }
+    });
+
+  return (
+    <Tarjeta>
+      <EncabezadoTarjeta
+        titulo="Coordinador auxiliar"
+        descripcion="Ayuda a la pareja de consejeros y puede cubrir a uno de ellos."
+      />
+      <div className="space-y-3 px-5 py-4 sm:px-6">
+        {coordinadores.length === 0 ? (
+          <p className="text-sm text-slate-400">Sin coordinador auxiliar todavía.</p>
+        ) : (
+          <ul className="space-y-3">
+            {coordinadores.map((k) => {
+              const puedeCubrir = k.sexo === "Hombre" ? faltaConsejero : faltaConsejera;
+              return (
+                <li key={k.id} className="flex flex-wrap items-center gap-3">
+                  <Avatar texto={nombreCompleto(k)} src={k.foto} />
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/consejeros/${k.id}`} className="block truncate font-semibold text-slate-800 hover:text-marca-700">
+                      {nombreCompleto(k)}
+                    </Link>
+                    <p className="text-xs text-slate-500">{nombreFuncion("coordinador", k.sexo)}</p>
+                  </div>
+                  {editable && (
+                    <div className="flex gap-1">
+                      {puedeCubrir && (
+                        <button
+                          type="button"
+                          disabled={pendiente}
+                          onClick={() => ejecutar(() => asignarConsejero(companiaId, k.sexo === "Hombre" ? "consejero" : "consejera", k.id))}
+                          className={claseBoton("secundario", "sm")}
+                          title="Ocupa el lugar vacío de la pareja de consejeros"
+                        >
+                          Cubrir como {k.sexo === "Hombre" ? "consejero" : "consejera"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={pendiente}
+                        onClick={() => ejecutar(() => quitarCoordinador(companiaId, k.id))}
+                        className={claseBoton("fantasma", "sm")}
+                        aria-label={`Quitar a ${nombreCompleto(k)} de la compañía`}
+                      >
+                        <UserMinus className="size-3.5" aria-hidden />
+                        <span className="hidden sm:inline">Quitar</span>
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {error && <Alerta tipo="error">{error}</Alerta>}
+
+        {editable &&
+          (libres.length > 0 ? (
+            <div className="space-y-1.5">
+              <div className="flex gap-2">
+                <select
+                  value={elegido}
+                  onChange={(e) => setElegido(e.target.value)}
+                  aria-label="Elegir coordinador auxiliar"
+                  className="entrada min-w-0 flex-1 py-2"
+                >
+                  <option value="">{coordinadores.length ? "Agregar otro…" : "Elegir coordinador auxiliar…"}</option>
+                  {libres.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                      {p.detalle ? ` · ${p.detalle}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <Boton disabled={!elegido || pendiente} onClick={() => ejecutar(() => asignarCoordinador(companiaId, elegido))}>
+                  {pendiente ? "…" : "Asignar"}
+                </Boton>
+              </div>
+              {coordinadores.length > 0 && <p className="text-xs text-slate-500">Normalmente hay uno por compañía.</p>}
+            </div>
+          ) : (
+            coordinadores.length === 0 && (
+              <p className="text-xs text-slate-500">
+                No hay coordinadores auxiliares sin compañía.{" "}
+                <Link href="/consejeros/nuevo" className="font-semibold text-marca-600 hover:text-marca-800">
+                  Registrar
+                </Link>
+              </p>
+            )
+          ))}
+      </div>
+      {aviso && <AvisoBreve key={aviso.n} titulo={aviso.texto} />}
+    </Tarjeta>
   );
 }
 

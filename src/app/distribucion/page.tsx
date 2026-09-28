@@ -8,7 +8,10 @@ import {
   colorCompania,
   companiaDeConsejeros,
   listarEdificios,
+  nombreFuncion,
   sexoPlural,
+  type Funcion,
+  type Sexo,
   type EdificioConHabitaciones,
   type HabitacionFila,
 } from "@/lib/organizacion";
@@ -28,6 +31,8 @@ interface Ocupante {
   compania: number | null;
   edad: number | null;
   barrio: string | null;
+  /** Solo líderes: "Consejera", "Coordinador auxiliar"… */
+  funcion?: string;
 }
 
 interface Hoja {
@@ -71,7 +76,7 @@ export default async function Distribucion({
       .then((r) => r.data ?? []),
     supabase
       .from("consejeros")
-      .select("id, nombres, apellidos, fecha_nacimiento, habitacion_id, barrio:barrios(nombre)")
+      .select("id, nombres, apellidos, sexo, funcion, fecha_nacimiento, habitacion_id, barrio:barrios(nombre)")
       .not("habitacion_id", "is", null)
       .then((r) => r.data ?? []),
     companiaDeConsejeros(),
@@ -93,6 +98,7 @@ export default async function Distribucion({
       compania: companias[c.id]?.numero ?? null,
       edad: edad(c.fecha_nacimiento),
       barrio: (c.barrio as unknown as { nombre: string } | null)?.nombre ?? null,
+      funcion: nombreFuncion(c.funcion as Funcion, c.sexo as Sexo),
     });
   }
   for (const lista of ocupantes.values()) {
@@ -205,7 +211,7 @@ function Tabla({ habitacion: h, ocupantes }: { habitacion: HabitacionFila; ocupa
       <p className="mb-[1.5mm] text-[10pt] font-bold">
         {h.nombre}
         <span className="ml-[2mm] text-[8.5pt] font-normal text-slate-500">
-          {lideres ? "consejeros" : "participantes"} · {ocupantes.length} de {h.capacidad} camas
+          {lideres ? "consejeros y coordinadores" : "participantes"} · {ocupantes.length} de {h.capacidad} camas
         </span>
       </p>
       <table className="w-full border-collapse text-[8.5pt]">
@@ -225,7 +231,10 @@ function Tabla({ habitacion: h, ocupantes }: { habitacion: HabitacionFila; ocupa
             return (
               <tr key={i} className="h-[4.6mm]">
                 <td className="border border-slate-300 px-[1.5mm] text-center text-slate-400">{i + 1}</td>
-                <td className="border border-slate-300 px-[2mm] font-semibold">{o?.nombre ?? ""}</td>
+                <td className="border border-slate-300 px-[2mm] font-semibold">
+                  {o?.nombre ?? ""}
+                  {o?.funcion && <span className="ml-[1.5mm] text-[7pt] font-normal text-slate-500">{o.funcion}</span>}
+                </td>
                 <td className="border border-slate-300 px-[1.5mm] text-center">
                   {o?.compania ? (
                     <span className="rounded-[1mm] px-[1.5mm] text-[7.5pt] font-bold text-white" style={{ background: colorCompania(o.compania) }}>

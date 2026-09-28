@@ -60,6 +60,18 @@ function Formulario({
           <Tarjeta>
             <EncabezadoTarjeta titulo="Datos personales" />
             <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+              <Campo
+                etiqueta="Función"
+                htmlFor="funcion"
+                error={err.funcion}
+                className="sm:col-span-2"
+                ayuda="El coordinador auxiliar acompaña a una compañía y puede cubrir al consejero o a la consejera. Define el rol de su cuenta."
+              >
+                <Seleccion id="funcion" name="funcion" defaultValue={val.funcion || "consejero"} className="entrada">
+                  <option value="consejero">Consejero o consejera</option>
+                  <option value="coordinador">Coordinador o coordinadora auxiliar</option>
+                </Seleccion>
+              </Campo>
               <Campo etiqueta="Nombres" htmlFor="nombres" error={err.nombres}>
                 <input id="nombres" name="nombres" defaultValue={val.nombres} className="entrada" autoComplete="off" />
               </Campo>
@@ -85,7 +97,7 @@ function Formulario({
                 etiqueta="Correo"
                 htmlFor="correo"
                 error={err.correo}
-                ayuda={id ? "Es también el correo con el que ingresa al sistema." : "Con este correo se le crea su cuenta, con el rol Consejero."}
+                ayuda={id ? "Es también el correo con el que ingresa al sistema." : "Con este correo se le crea su cuenta, con el rol de su función."}
               >
                 <input id="correo" name="correo" type="email" autoComplete="off" defaultValue={val.correo} className="entrada" />
               </Campo>
@@ -166,7 +178,7 @@ function Formulario({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <ResultadoEnvio estado={estado} />
             <BotonEnviar pendiente="Guardando…" className="shrink-0">
-              {id ? "Guardar cambios" : "Registrar consejero"}
+              {id ? "Guardar cambios" : "Registrar"}
             </BotonEnviar>
           </div>
         )}
@@ -195,11 +207,11 @@ function RegistroListo({ estado, alRegistrarOtro }: { estado: EstadoConsejero; a
             <CheckCircle2 className="size-6" />
           </span>
           <div>
-            <h2 className="text-lg font-semibold text-marca-950">Consejero registrado</h2>
+            <h2 className="text-lg font-semibold text-marca-950">{estado.ok?.replace(/\.$/, "")}</h2>
             <p className="text-sm text-slate-500">
               {estado.vinculada
                 ? "Ya tenía cuenta con ese correo: se vinculó a su ficha. Ingresa con su contraseña de siempre."
-                : "Se le creó su cuenta con el rol Consejero. Entrégale estos datos por un canal privado."}
+                : "Se le creó su cuenta con el rol de su función. Entrégale estos datos por un canal privado."}
             </p>
           </div>
         </div>

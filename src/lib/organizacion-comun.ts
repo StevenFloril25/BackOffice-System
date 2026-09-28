@@ -4,6 +4,9 @@ import type { BarrioResumen } from "@/lib/participantes-comun";
 
 export type Sexo = "Hombre" | "Mujer";
 
+/** consejero: ocupa el lugar de consejero o consejera. coordinador: coordinador auxiliar de una compañía. */
+export type Funcion = "consejero" | "coordinador";
+
 /** jovenes: el dormitorio del piso. lideres: la habitación de los consejeros. */
 export type TipoHabitacion = "jovenes" | "lideres";
 
@@ -32,6 +35,7 @@ export interface ConsejeroResumen {
   nombres: string;
   apellidos: string;
   sexo: Sexo;
+  funcion: Funcion;
   foto_path: string | null;
 }
 
@@ -45,7 +49,9 @@ export interface Consejero extends ConsejeroResumen {
   contacto_emergencia_telefono: string | null;
   notas: string | null;
   habitacion_id: string | null;
-  /** Su cuenta de acceso (rol Consejero). */
+  /** Compañía que coordina (solo coordinadores auxiliares). */
+  coordina_compania_id: string | null;
+  /** Su cuenta de acceso (rol Consejero o Coordinador auxiliar). */
   profile_id: string | null;
   created_at: string;
   barrio: BarrioResumen | null;
@@ -84,6 +90,12 @@ export function sexoPlural(sexo: Sexo | null) {
 /** Consejero o consejera según el sexo. */
 export function rolConsejero(sexo: Sexo | null) {
   return sexo === "Mujer" ? "Consejera" : "Consejero";
+}
+
+/** "Consejera", "Coordinador auxiliar"… según la función y el sexo. */
+export function nombreFuncion(funcion: Funcion, sexo: Sexo | null) {
+  if (funcion === "coordinador") return sexo === "Mujer" ? "Coordinadora auxiliar" : "Coordinador auxiliar";
+  return rolConsejero(sexo);
 }
 
 /**

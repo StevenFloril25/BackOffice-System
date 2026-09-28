@@ -10,7 +10,7 @@ import type {
   Sexo,
   TipoHabitacion,
 } from "@/lib/organizacion-comun";
-import { nombreCompania } from "@/lib/organizacion-comun";
+import { nombreCompania, nombreFuncion, type Funcion } from "@/lib/organizacion-comun";
 import { edad, nombreCompleto } from "@/lib/participantes-comun";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,9 +23,10 @@ export * from "@/lib/organizacion-comun";
 
 const HABITACION = "habitacion:habitaciones(id, nombre, piso, tipo, edificio:edificios(id, nombre, sexo))";
 const COLUMNAS_CONSEJERO = `*, barrio:barrios(id, nombre, estaca), ${HABITACION}`;
-const RESUMEN_CONSEJERO = "id, nombres, apellidos, sexo, foto_path";
-// Dos llaves de companias a consejeros: hay que decir cuál es cuál.
-const COLUMNAS_COMPANIA = `id, numero, nombre, notas, consejero:consejeros!companias_consejero_id_fkey(${RESUMEN_CONSEJERO}), consejera:consejeros!companias_consejera_id_fkey(${RESUMEN_CONSEJERO})`;
+const RESUMEN_CONSEJERO = "id, nombres, apellidos, sexo, funcion, foto_path";
+// Tres llaves entre companias y consejeros (consejero, consejera y quien
+// coordina): hay que decir cuál es cuál.
+const COLUMNAS_COMPANIA = `id, numero, nombre, notas, consejero:consejeros!companias_consejero_id_fkey(${RESUMEN_CONSEJERO}), consejera:consejeros!companias_consejera_id_fkey(${RESUMEN_CONSEJERO}), coordinadores:consejeros!consejeros_coordina_compania_id_fkey(${RESUMEN_CONSEJERO})`;
 
 const porNombre = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
 
@@ -51,15 +52,27 @@ export async function obtenerConsejero(id: string): Promise<Consejero | null> {
   return (data as unknown as Consejero | null) ?? null;
 }
 
-/** La compañía de cada consejero asignado: { idConsejero: compañía }. */
+/**
+ * La compañía de cada líder: la que tiene como consejero o consejera, o la que
+ * coordina. { idConsejero: compañía }.
+ */
 export async function companiaDeConsejeros(): Promise<Record<string, CompaniaResumen>> {
   const supabase = await createClient();
-  const { data } = await supabase.from("companias").select("id, numero, nombre, consejero_id, consejera_id");
+  const [{ data }, { data: coordinadores }] = await Promise.all([
+    supabase.from("companias").select("id, numero, nombre, consejero_id, consejera_id"),
+    supabase.from("consejeros").select("id, coordina_compania_id").not("coordina_compania_id", "is", null),
+  ]);
   const salida: Record<string, CompaniaResumen> = {};
+  const porId = new Map<string, CompaniaResumen>();
   for (const c of data ?? []) {
     const compania = { id: c.id, numero: c.numero, nombre: c.nombre };
+    porId.set(c.id, compania);
     if (c.consejero_id) salida[c.consejero_id] = compania;
     if (c.consejera_id) salida[c.consejera_id] = compania;
+  }
+  for (const k of coordinadores ?? []) {
+    const compania = porId.get(k.coordina_compania_id as string);
+    if (compania) salida[k.id] = compania;
   }
   return salida;
 }
@@ -72,6 +85,8 @@ export interface CompaniaFila extends CompaniaResumen {
   notas: string | null;
   consejero: ConsejeroResumen | null;
   consejera: ConsejeroResumen | null;
+  /** Coordinadores auxiliares: normalmente uno, rara vez dos. */
+  coordinadores: ConsejeroResumen[];
 }
 
 export interface ResumenJovenes {
@@ -303,7 +318,7 @@ export async function ocupantesDeHabitacion(habitacionId: string): Promise<Integ
   const supabase = await createClient();
   const [{ data: jovenes }, { data: consejeros }, companias] = await Promise.all([
     supabase.from("participantes").select(COLUMNAS_JOVEN).eq("habitacion_id", habitacionId),
-    supabase.from("consejeros").select("id, nombres, apellidos, sexo, fecha_nacimiento, foto_path, barrio:barrios(nombre)").eq("habitacion_id", habitacionId),
+    supabase.from("consejeros").select("id, nombres, apellidos, sexo, funcion, fecha_nacimiento, foto_path, barrio:barrios(nombre)").eq("habitacion_id", habitacionId),
     companiaDeConsejeros(),
   ]);
   const fotos = await urlsFotos((consejeros ?? []).map((c) => c.foto_path));
@@ -315,7 +330,7 @@ export async function ocupantesDeHabitacion(habitacionId: string): Promise<Integ
     edad: edad(c.fecha_nacimiento),
     barrio: (c.barrio as unknown as { nombre: string } | null)?.nombre ?? null,
     foto: c.foto_path ? (fotos[c.foto_path] ?? null) : null,
-    extra: companias[c.id] ? nombreCompania(companias[c.id]) : "Sin compañía",
+    extra: nombreFuncion(c.funcion as Funcion, c.sexo as Sexo),
     compania: companias[c.id]?.numero ?? null,
   }));
   return [...deConsejeros, ...(await aIntegrantes((jovenes ?? []) as unknown as FilaJoven[], "compania"))];
@@ -366,26 +381,66 @@ export async function jovenesSinHabitacion(sexo: Sexo): Promise<PersonaElegible[
     .sort((a, b) => porNombre.compare(a.nombre, b.nombre));
 }
 
-/** Consejeros de un sexo libres para una compañía o para una cama. */
-export async function consejerosLibres(sexo: Sexo, para: "compania" | "habitacion"): Promise<PersonaElegible[]> {
+/**
+ * Líderes de un sexo que se pueden elegir:
+ *  - para el lugar de consejero/a de una compañía: consejeros sin compañía y
+ *    coordinadores sin compañía o de esa misma compañía (así uno la cubre);
+ *  - para una cama: consejeros y coordinadores sin cama.
+ */
+export async function consejerosLibres(sexo: Sexo, para: "compania" | "habitacion", companiaId?: string): Promise<PersonaElegible[]> {
   const supabase = await createClient();
-  let consulta = supabase.from("consejeros").select("id, nombres, apellidos, sexo, fecha_nacimiento, barrio:barrios(nombre)").eq("sexo", sexo);
+  let consulta = supabase
+    .from("consejeros")
+    .select("id, nombres, apellidos, sexo, funcion, coordina_compania_id, fecha_nacimiento, barrio:barrios(nombre)")
+    .eq("sexo", sexo);
   if (para === "habitacion") consulta = consulta.is("habitacion_id", null);
   const [{ data }, companias] = await Promise.all([consulta, companiaDeConsejeros()]);
   return (data ?? [])
-    .filter((c) => para === "habitacion" || !companias[c.id])
+    .filter((c) => {
+      if (para === "habitacion") return true;
+      if (c.coordina_compania_id) return c.coordina_compania_id === companiaId;
+      return !companias[c.id];
+    })
+    .map((c) => {
+      const e = edad(c.fecha_nacimiento);
+      const barrio = (c.barrio as unknown as { nombre: string } | null)?.nombre;
+      const funcion = c.funcion === "coordinador" ? nombreFuncion("coordinador", c.sexo as Sexo) : null;
+      const deEsta = Boolean(companiaId) && c.coordina_compania_id === companiaId;
+      const compania = deEsta ? "de esta compañía" : companias[c.id] ? nombreCompania(companias[c.id]) : null;
+      return {
+        id: c.id,
+        nombre: nombreCompleto(c),
+        detalle: [funcion, compania, e !== null ? `${e} años` : null, barrio].filter(Boolean).join(" · "),
+        sexo: c.sexo as Sexo,
+        edad: e,
+        grupo: para === "habitacion" ? (companias[c.id] ? `Compañía ${companias[c.id].numero}` : "Sin compañía") : undefined,
+      };
+    })
+    .sort((a, b) => porNombre.compare(a.nombre, b.nombre));
+}
+
+/** Coordinadores auxiliares libres: sin compañía que coordinar ni lugar de consejero. */
+export async function coordinadoresLibres(): Promise<PersonaElegible[]> {
+  const supabase = await createClient();
+  const [{ data }, companias] = await Promise.all([
+    supabase
+      .from("consejeros")
+      .select("id, nombres, apellidos, sexo, fecha_nacimiento, barrio:barrios(nombre)")
+      .eq("funcion", "coordinador")
+      .is("coordina_compania_id", null),
+    companiaDeConsejeros(),
+  ]);
+  return (data ?? [])
+    .filter((c) => !companias[c.id])
     .map((c) => {
       const e = edad(c.fecha_nacimiento);
       const barrio = (c.barrio as unknown as { nombre: string } | null)?.nombre;
       return {
         id: c.id,
         nombre: nombreCompleto(c),
-        detalle: [e !== null ? `${e} años` : null, companias[c.id] ? nombreCompania(companias[c.id]) : null, barrio]
-          .filter(Boolean)
-          .join(" · "),
+        detalle: [nombreFuncion("coordinador", c.sexo as Sexo), e !== null ? `${e} años` : null, barrio].filter(Boolean).join(" · "),
         sexo: c.sexo as Sexo,
         edad: e,
-        grupo: para === "habitacion" ? (companias[c.id] ? `Compañía ${companias[c.id].numero}` : "Sin compañía") : undefined,
       };
     })
     .sort((a, b) => porNombre.compare(a.nombre, b.nombre));

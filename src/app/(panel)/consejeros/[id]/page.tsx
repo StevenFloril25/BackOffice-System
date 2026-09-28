@@ -6,7 +6,7 @@ import { BedDouble, Flag } from "lucide-react";
 import { SinAcceso } from "@/components/sin-acceso";
 import { EncabezadoPagina, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { urlFoto } from "@/lib/fotos";
-import { companiaDeConsejeros, nombreCompania, obtenerConsejero, rolConsejero } from "@/lib/organizacion";
+import { companiaDeConsejeros, nombreCompania, nombreFuncion, obtenerConsejero } from "@/lib/organizacion";
 import { edad, listarBarriosOpciones, nombreCompleto } from "@/lib/participantes";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { FormularioConsejero } from "../formulario";
@@ -46,6 +46,7 @@ export default async function FichaConsejero({ params }: { params: Promise<{ id:
   const e = edad(c.fecha_nacimiento);
 
   const inicial: Record<string, string> = {
+    funcion: c.funcion,
     nombres: c.nombres,
     apellidos: c.apellidos,
     sexo: c.sexo,
@@ -64,7 +65,7 @@ export default async function FichaConsejero({ params }: { params: Promise<{ id:
       <EncabezadoPagina
         migas={[{ etiqueta: "Consejeros", href: "/consejeros" }, { etiqueta: nombreCompleto(c) }]}
         titulo={nombreCompleto(c)}
-        descripcion={[rolConsejero(c.sexo), e !== null ? `${e} años` : null, c.barrio?.nombre].filter(Boolean).join(" · ")}
+        descripcion={[nombreFuncion(c.funcion, c.sexo), e !== null ? `${e} años` : null, c.barrio?.nombre].filter(Boolean).join(" · ")}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -91,7 +92,9 @@ export default async function FichaConsejero({ params }: { params: Promise<{ id:
             <ul className="divide-y divide-slate-100 text-sm">
               <li className="flex items-center gap-3 px-5 py-3.5 sm:px-6">
                 <Flag className="size-4 shrink-0 text-marca-500" aria-hidden />
-                <span className="flex-1 text-slate-500">Compañía</span>
+                <span className="flex-1 text-slate-500">
+                  {c.coordina_compania_id ? "Coordina" : compania && c.funcion === "coordinador" ? "Cubre como consejero en" : "Compañía"}
+                </span>
                 {compania ? (
                   <Link href={`/companias/${compania.id}`} className="font-semibold text-marca-700 hover:text-marca-900">
                     {nombreCompania(compania)}
