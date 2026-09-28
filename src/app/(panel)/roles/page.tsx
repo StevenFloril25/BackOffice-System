@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { Crown, Plus, ShieldCheck, Users } from "lucide-react";
 
 import { SinAcceso } from "@/components/sin-acceso";

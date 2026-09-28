@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { Camera, CameraOff, CheckCircle2, Loader2, RotateCcw, Search, UserCheck, XCircle } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AvisoBreve, Fecha } from "@/components/cliente";

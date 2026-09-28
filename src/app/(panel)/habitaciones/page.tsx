@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import clsx from "clsx";
 import { BedDouble, CircleAlert, Printer, Wand2 } from "lucide-react";
 

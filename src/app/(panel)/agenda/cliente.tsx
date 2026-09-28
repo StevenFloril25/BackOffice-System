@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { CalendarDays, Clock3, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useActionState, useCallback, useEffect, useState, useSyncExternalStore, useTransition } from "react";
 

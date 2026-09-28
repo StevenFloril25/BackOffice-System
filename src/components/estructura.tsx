@@ -3,7 +3,8 @@
 import clsx from "clsx";
 import { Loader2, LogOut, Menu, UserRound, X } from "lucide-react";
 import Image from "next/image";
-import Link, { useLinkStatus } from "next/link";
+import { useLinkStatus } from "next/link";
+import Link from "@/components/enlace";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 

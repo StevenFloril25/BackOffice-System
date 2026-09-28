@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { CheckCircle2, FileSpreadsheet, UploadCloud } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useActionState, useState } from "react";
 
 import { BotonEnviar } from "@/components/cliente";

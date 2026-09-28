@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { CheckCircle2, KeyRound, Sparkles } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useActionState, useState } from "react";
 
 import { BotonEnviar, CopiarTexto, EntradaClave } from "@/components/cliente";

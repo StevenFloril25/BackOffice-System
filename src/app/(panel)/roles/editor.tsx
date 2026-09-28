@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { Check } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useActionState, useMemo, useState } from "react";
 
 import { BotonEnviar } from "@/components/cliente";

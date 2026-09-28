@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { ChevronRight, HeartHandshake, Search, UserPlus } from "lucide-react";
 
 import { SinAcceso } from "@/components/sin-acceso";

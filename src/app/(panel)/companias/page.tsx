@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { ChevronRight, Flag, Wand2 } from "lucide-react";
 
 import { AvisoBreve } from "@/components/cliente";

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Form from "next/form";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import clsx from "clsx";
 import { Flag } from "lucide-react";
 
+import { CargaEnlace } from "@/components/carga-enlace";
 import { AplicarPropuesta } from "@/components/propuesta";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, Boton, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, OpcionEnlace, Tarjeta } from "@/components/ui";
@@ -89,16 +90,17 @@ export default async function RepartoSugerido({ searchParams }: { searchParams: 
                     scroll={false}
                     aria-current={activo ? "true" : undefined}
                     className={clsx(
-                      "rounded-xl border px-4 py-2 text-sm font-semibold transition",
+                      "inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold transition",
                       activo ? "border-marca-700 bg-marca-700 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
                     )}
                   >
                     {t}
                     {t === 20 && <span className={clsx("ml-1.5 text-xs font-medium", activo ? "text-marca-100" : "text-slate-400")}>10 y 10</span>}
+                    <CargaEnlace className="ml-1.5 size-3.5" />
                   </Link>
                 );
               })}
-              <Form action="/companias/distribuir" replace scroll={false} className="flex items-center gap-2">
+              <Form action="/companias/distribuir" replace scroll={false} prefetch={false} className="flex items-center gap-2">
                 <input type="hidden" name="edades" value={modo} />
                 <input type="hidden" name="alcance" value={alcance} />
                 <label htmlFor="tamano" className="sr-only">

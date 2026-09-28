@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import clsx from "clsx";
 import { Shirt } from "lucide-react";
 
+import { CargaEnlace } from "@/components/carga-enlace";
 import { SinAcceso } from "@/components/sin-acceso";
 import { EncabezadoPagina, Tarjeta } from "@/components/ui";
 import { diaDeHoy, fechaCorta, fechaLarga } from "@/lib/agenda";
@@ -67,7 +68,10 @@ export default async function PaginaAgenda({ searchParams }: { searchParams: Pro
                 activo ? "border-marca-700 bg-marca-700 text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
               )}
             >
-              <span className="block text-sm font-semibold">Día {d.dia}</span>
+              <span className="flex items-center justify-center gap-1 text-sm font-semibold">
+                Día {d.dia}
+                <CargaEnlace className="size-3" />
+              </span>
               {d.fecha && <span className={clsx("block text-[11px]", activo ? "text-marca-100" : "text-slate-500")}>{fechaCorta(d.fecha)}</span>}
               {d.dia === hoy && (
                 <span className="absolute -top-1.5 -right-1.5 rounded-full bg-sol-400 px-1.5 text-[10px] font-bold text-marca-950">Hoy</span>
@@ -105,6 +109,7 @@ export default async function PaginaAgenda({ searchParams }: { searchParams: Pro
                     className={clsx("rounded-md px-2.5 py-1.5", ver === v.clave ? "bg-white text-marca-800 shadow-xs" : "text-slate-500 hover:text-slate-800")}
                   >
                     {v.etiqueta}
+                    <CargaEnlace className="ml-1 inline size-3" />
                   </Link>
                 ))}
               </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { ChevronRight, FileSpreadsheet, IdCard, Printer, Search, UserPlus } from "lucide-react";
 
 import { Fecha } from "@/components/cliente";

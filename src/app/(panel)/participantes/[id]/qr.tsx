@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, Printer, Share2 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useState } from "react";
 
 import { EncabezadoTarjeta, Tarjeta, claseBoton } from "@/components/ui";

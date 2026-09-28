@@ -1,9 +1,10 @@
 import clsx from "clsx";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import type { ComponentProps, ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
 
+import { CargaEnlace, MarcaOpcion } from "@/components/carga-enlace";
 import { iniciales, tonoAvatar } from "@/lib/utilidades";
 
 // ---------------------------------------------------------------------------
@@ -50,9 +51,15 @@ export function EnlaceBoton({
   variante,
   tamano,
   className,
+  children,
   ...props
 }: ComponentProps<typeof Link> & { variante?: Variante; tamano?: Tamano }) {
-  return <Link className={claseBoton(variante, tamano, className)} {...props} />;
+  return (
+    <Link className={claseBoton(variante, tamano, className)} {...props}>
+      {children}
+      <CargaEnlace className={tamano === "sm" ? "size-3.5" : "size-4"} />
+    </Link>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -295,15 +302,7 @@ export function OpcionEnlace({
         activa ? "border-marca-500 bg-marca-50/70 ring-1 ring-marca-500" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
       )}
     >
-      <span
-        aria-hidden
-        className={clsx(
-          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-          activa ? "border-marca-600 bg-marca-600" : "border-slate-300 bg-white",
-        )}
-      >
-        {activa && <span className="size-1.5 rounded-full bg-white" />}
-      </span>
+      <MarcaOpcion activa={activa} />
       <span className="min-w-0">
         <span className="block text-sm font-semibold text-slate-900">{titulo}</span>
         {detalle && <span className="mt-0.5 block text-xs text-slate-500">{detalle}</span>}

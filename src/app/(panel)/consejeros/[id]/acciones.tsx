@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useState, useTransition } from "react";
 
 import { Dialogo } from "@/components/cliente";

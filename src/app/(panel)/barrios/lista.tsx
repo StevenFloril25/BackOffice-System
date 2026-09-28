@@ -1,7 +1,7 @@
 "use client";
 
 import { Church, Mail, MessageCircle, Pencil, Phone, Plus, Printer, Trash2 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useMemo, useState, useTransition } from "react";
 
 import { Dialogo } from "@/components/cliente";

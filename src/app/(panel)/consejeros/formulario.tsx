@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Plus } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useActionState, useMemo, useState } from "react";
 
 import { BotonEnviar, CopiarTexto, ResultadoEnvio, Seleccion } from "@/components/cliente";

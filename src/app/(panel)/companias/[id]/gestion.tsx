@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Trash2, UserMinus, UserPlus, Users } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { useCallback, useState, useTransition } from "react";
 
 import { AvisoBreve, Dialogo } from "@/components/cliente";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/enlace";
 import { ArrowRight, History, ShieldCheck, UserCheck, UserPlus, Users } from "lucide-react";
 
 import { Fecha } from "@/components/cliente";
