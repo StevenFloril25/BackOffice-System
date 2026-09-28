@@ -111,6 +111,7 @@ export default async function FichaParticipante({
 
           <Asistencia
             id={p.id}
+            nombre={nombreCompleto(p)}
             asistioAt={p.asistio_at}
             registradoPor={registradoPor}
             puedeRegistrar={puede(sesion, "asistencia.registrar")}

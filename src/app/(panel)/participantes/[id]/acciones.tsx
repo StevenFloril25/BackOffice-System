@@ -3,7 +3,7 @@
 import { CheckCircle2, Clock, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
-import { Dialogo, Fecha } from "@/components/cliente";
+import { AvisoBreve, Dialogo, Fecha } from "@/components/cliente";
 import { EditorFoto } from "@/components/foto";
 import { Alerta, Boton, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { eliminarParticipante, marcarAsistencia, quitarFotoParticipante, subirFotoParticipante } from "../actions";
@@ -23,11 +23,13 @@ export function FotoParticipante({ id, url, texto, editable }: { id: string; url
 
 export function Asistencia({
   id,
+  nombre,
   asistioAt,
   registradoPor,
   puedeRegistrar,
 }: {
   id: string;
+  nombre: string;
   asistioAt: string | null;
   registradoPor: string | null;
   puedeRegistrar: boolean;
@@ -35,17 +37,21 @@ export function Asistencia({
   const [pendiente, iniciar] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirmarAnular, setConfirmarAnular] = useState(false);
+  // Cada llegada marcada abre el modal breve (la `key` lo vuelve a montar).
+  const [registros, setRegistros] = useState(0);
 
   const cambiar = (asistio: boolean) =>
     iniciar(async () => {
       setError(null);
       const r = await marcarAsistencia(id, asistio);
       if (r.error) setError(r.error);
+      else if (asistio) setRegistros((n) => n + 1);
       setConfirmarAnular(false);
     });
 
   return (
     <Tarjeta>
+      {registros > 0 && <AvisoBreve key={registros} titulo="Participante registrado" detalle={nombre} />}
       <EncabezadoTarjeta titulo="Llegada" />
       <div className="space-y-4 p-5 sm:p-6">
         {error && <Alerta tipo="error">{error}</Alerta>}
