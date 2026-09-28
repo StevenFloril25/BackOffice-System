@@ -31,6 +31,17 @@ if (pendientes) {
 }
 const commit = execSync("git rev-parse --short HEAD").toString().trim();
 
+// Restos de despliegues anteriores (ver el comentario de la limpieza al final).
+for (const d of fs.readdirSync(os.tmpdir())) {
+  if (d.startsWith("backoffice-deploy-") && !d.endsWith(".log")) {
+    try {
+      fs.rmSync(path.join(os.tmpdir(), d), { recursive: true, force: true });
+    } catch {
+      // sigue bloqueada: se intentará la próxima vez
+    }
+  }
+}
+
 const copia = fs.mkdtempSync(path.join(os.tmpdir(), "backoffice-deploy-"));
 const log = path.join(os.tmpdir(), `backoffice-deploy-${commit}.log`);
 
@@ -44,18 +55,20 @@ const salida = fs.openSync(log, "w");
 const hijo = spawn("npx vercel deploy --prod --yes", {
   cwd: copia,
   shell: true,
-  env: process.env,
+  // Sin avisos de actualización ni telemetría: el CLI los corre en procesos en
+  // segundo plano que se quedan con la carpeta abierta después de terminar.
+  env: { ...process.env, NO_UPDATE_NOTIFIER: "1", VERCEL_TELEMETRY_DISABLED: "1" },
   stdio: ["ignore", salida, salida],
 });
 
 hijo.on("exit", (codigo) => {
-  // En Windows el CLI puede seguir soltando archivos un instante después de
-  // salir: se reintenta, y si igual falla, no es motivo para dar por fallido
-  // un despliegue que sí salió.
+  // En Windows algún proceso del CLI puede seguir con la carpeta abierta un
+  // rato: se reintenta, y si igual falla la borra el próximo despliegue. No es
+  // motivo para dar por fallido un despliegue que sí salió.
   try {
     fs.rmSync(copia, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
   } catch {
-    console.warn(`No se pudo borrar la copia temporal ${copia}; bórrala a mano.`);
+    console.warn("La copia temporal sigue en uso; se borra en el próximo despliegue.");
   }
   execSync("git worktree prune");
   const texto = fs.readFileSync(log, "utf8").replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
