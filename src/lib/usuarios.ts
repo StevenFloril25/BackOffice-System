@@ -5,8 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 export interface UsuarioFila {
   id: string;
   email: string;
+  username: string | null;
   full_name: string;
   phone: string | null;
+  avatar_path: string | null;
   role_id: string | null;
   role_name: string | null;
   role_is_system: boolean;

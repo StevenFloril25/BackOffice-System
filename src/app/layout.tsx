@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
+import { MARCA } from "@/lib/marca";
+
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -10,8 +12,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: { default: "BackOffice FSY", template: "%s · BackOffice FSY" },
-  description: "Sistema administrativo de las conferencias FSY.",
+  title: { default: `${MARCA.nombre} · ${MARCA.sesion}`, template: `%s · ${MARCA.nombre}` },
+  description: `Sistema administrativo de ${MARCA.nombre}, ${MARCA.sesion}.`,
   robots: { index: false, follow: false },
 };
 

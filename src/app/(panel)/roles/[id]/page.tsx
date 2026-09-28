@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, Avatar, EncabezadoPagina, EncabezadoTarjeta, Insignia, Tarjeta } from "@/components/ui";
 import { catalogoPermisos, obtenerRol, resumenRoles } from "@/lib/roles";
+import { urlsFotos } from "@/lib/fotos";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { listarUsuarios } from "@/lib/usuarios";
 import { EditorRol } from "../editor";
@@ -33,6 +34,7 @@ export default async function DetalleRol({
 
   const usuariosDelRol = puede(sesion, "usuarios.ver") ? (await listarUsuarios()).filter((u) => u.role_id === id) : null;
   const cantidadUsuarios = resumen.find((r) => r.id === id)?.usuarios ?? 0;
+  const fotos = await urlsFotos((usuariosDelRol ?? []).map((u) => u.avatar_path));
 
   const esPropio = rol.id === sesion.rol?.id;
   const editable = puede(sesion, "roles.editar") && !rol.is_system && !(esPropio && !sesion.esAdmin);
@@ -89,7 +91,7 @@ export default async function DetalleRol({
                 {usuariosDelRol.map((u) => (
                   <li key={u.id}>
                     <Link href={`/usuarios/${u.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-menta-50 sm:px-6">
-                      <Avatar texto={u.full_name || u.email} tamano="sm" />
+                      <Avatar texto={u.full_name || u.email} tamano="sm" src={u.avatar_path ? fotos[u.avatar_path] : null} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-slate-900">{u.full_name || u.email}</span>
                         <span className="block truncate text-xs text-slate-500">{u.email}</span>

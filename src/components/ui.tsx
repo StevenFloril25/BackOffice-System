@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
@@ -186,17 +187,33 @@ export function Insignia({ tono = "neutro", punto, children }: { tono?: Tono; pu
   );
 }
 
-export function Avatar({ texto, tamano = "md" }: { texto: string; tamano?: "sm" | "md" | "lg" }) {
+export function Avatar({
+  texto,
+  tamano = "md",
+  src,
+}: {
+  texto: string;
+  tamano?: "sm" | "md" | "lg";
+  /** URL firmada de la foto; sin ella se muestran las iniciales. */
+  src?: string | null;
+}) {
+  const medida = clsx(
+    tamano === "sm" && "size-8 text-xs",
+    tamano === "md" && "size-10 text-sm",
+    tamano === "lg" && "size-14 text-lg",
+  );
+  if (src) {
+    return (
+      <span aria-hidden className={clsx("relative inline-block shrink-0 overflow-hidden rounded-full bg-slate-100", medida)}>
+        {/* unoptimized: la URL firmada caduca y no tiene sentido cachearla en el optimizador. */}
+        <Image src={src} alt="" fill unoptimized sizes="56px" className="object-cover" />
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden
-      className={clsx(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-bold",
-        tonoAvatar(texto),
-        tamano === "sm" && "size-8 text-xs",
-        tamano === "md" && "size-10 text-sm",
-        tamano === "lg" && "size-14 text-lg",
-      )}
+      className={clsx("inline-flex shrink-0 items-center justify-center rounded-full font-bold", tonoAvatar(texto), medida)}
     >
       {iniciales(texto)}
     </span>

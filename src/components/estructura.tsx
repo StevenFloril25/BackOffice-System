@@ -9,12 +9,14 @@ import { useState, type ReactNode } from "react";
 
 import { Icono } from "@/components/iconos";
 import { Avatar } from "@/components/ui";
+import { MARCA } from "@/lib/marca";
 import type { SeccionMenu } from "@/lib/navegacion";
 
 interface Usuario {
   nombre: string;
   email: string;
   rol: string;
+  foto: string | null;
 }
 
 export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; usuario: Usuario; children: ReactNode }) {
@@ -102,7 +104,7 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
 
         <div className="relative border-t border-white/10 p-3">
           <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-            <Avatar texto={usuario.nombre || usuario.email} tamano="sm" />
+            <Avatar texto={usuario.nombre || usuario.email} tamano="sm" src={usuario.foto} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{usuario.nombre || usuario.email}</p>
               <p className="truncate text-xs text-marca-300/80">{usuario.rol}</p>
@@ -147,8 +149,8 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
         priority
       />
       <span className="leading-tight">
-        <span className={clsx("block text-sm font-bold", compacta ? "text-marca-950" : "text-white")}>BackOffice</span>
-        <span className={clsx("block text-xs", compacta ? "text-slate-500" : "text-marca-300/80")}>Conferencias FSY</span>
+        <span className={clsx("block text-sm font-bold", compacta ? "text-marca-950" : "text-white")}>{MARCA.nombre}</span>
+        <span className={clsx("block text-xs", compacta ? "text-slate-500" : "text-marca-300/80")}>{MARCA.sesion}</span>
       </span>
     </Link>
   );

@@ -46,6 +46,14 @@ function Formulario({ roles, alCrearOtro }: { roles: RolOpcion[]; alCrearOtro: (
                 <CopiarTexto texto={estado.email ?? ""} />
               </dd>
             </div>
+            {estado.usuario && (
+              <div>
+                <dt className="mb-1.5 text-sm font-medium text-slate-700">Usuario (también sirve para ingresar)</dt>
+                <dd>
+                  <CopiarTexto texto={estado.usuario} />
+                </dd>
+              </div>
+            )}
             {estado.clave && (
               <div>
                 <dt className="mb-1.5 text-sm font-medium text-slate-700">Contraseña temporal</dt>
@@ -112,10 +120,26 @@ function Formulario({ roles, alCrearOtro }: { roles: RolOpcion[]; alCrearOtro: (
               placeholder="nombre@correo.com"
             />
           </Campo>
+          <Campo
+            etiqueta="Usuario"
+            htmlFor="username"
+            error={err.username}
+            ayuda="Para ingresar sin correo. Si lo dejas vacío, se arma con el correo."
+          >
+            <input
+              id="username"
+              name="username"
+              defaultValue={val.username}
+              autoCapitalize="none"
+              spellCheck={false}
+              className="entrada"
+              placeholder="maria.perez"
+            />
+          </Campo>
           <Campo etiqueta="Teléfono" htmlFor="phone" error={err.phone} ayuda="Opcional.">
             <input id="phone" name="phone" type="tel" defaultValue={val.phone} className="entrada" placeholder="+503 7000 0000" />
           </Campo>
-          <Campo etiqueta="Rol" htmlFor="role_id" error={err.role_id} className="sm:col-span-2" ayuda={rolElegido?.description}>
+          <Campo etiqueta="Rol" htmlFor="role_id" error={err.role_id} ayuda={rolElegido?.description}>
             <select
               id="role_id"
               name="role_id"

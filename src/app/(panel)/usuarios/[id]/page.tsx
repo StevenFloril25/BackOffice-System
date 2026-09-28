@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, Avatar, EncabezadoPagina, EncabezadoTarjeta, EnlaceBoton, Insignia, Tarjeta } from "@/components/ui";
+import { urlFoto } from "@/lib/fotos";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { estadoUsuario, listarRolesOpciones, obtenerUsuario } from "@/lib/usuarios";
 import { AccionesCuenta } from "./acciones-cuenta";
+import { FotoUsuario } from "./foto";
 import { FormularioEditarUsuario } from "./formulario";
 
 export const metadata: Metadata = { title: "Usuario" };
@@ -28,6 +30,7 @@ export default async function DetalleUsuario({ params }: { params: Promise<{ id:
   const puedeEditar = puede(sesion, "usuarios.editar") && !esPropia && !protegido;
   const puedeEliminar = puede(sesion, "usuarios.eliminar") && !esPropia && !protegido;
   const e = estadoUsuario(usuario);
+  const foto = await urlFoto(usuario.avatar_path);
 
   // El rol de sistema solo lo asigna un admin, pero si ya lo tiene debe verse.
   const opcionesRol = roles.filter((r) => sesion.esAdmin || !r.is_system || r.id === usuario.role_id);
@@ -38,11 +41,14 @@ export default async function DetalleUsuario({ params }: { params: Promise<{ id:
         migas={[{ etiqueta: "Usuarios", href: "/usuarios" }, { etiqueta: usuario.full_name || usuario.email }]}
         titulo={
           <span className="flex items-center gap-4">
-            <Avatar texto={usuario.full_name || usuario.email} tamano="lg" />
+            <Avatar texto={usuario.full_name || usuario.email} tamano="lg" src={foto} />
             <span className="min-w-0">
               <span className="block truncate">{usuario.full_name || "Sin nombre"}</span>
               <span className="mt-1 flex flex-wrap items-center gap-2 text-sm font-normal tracking-normal">
-                <span className="text-slate-500">{usuario.email}</span>
+                <span className="text-slate-500">
+                  {usuario.username && <span className="font-medium text-slate-600">@{usuario.username} · </span>}
+                  {usuario.email}
+                </span>
                 <Insignia tono={usuario.role_is_system ? "sol" : usuario.role_name ? "marca" : "neutro"}>
                   {usuario.role_name ?? "Sin rol"}
                 </Insignia>
@@ -81,6 +87,18 @@ export default async function DetalleUsuario({ params }: { params: Promise<{ id:
         </Tarjeta>
 
         <div className="space-y-6">
+          <Tarjeta>
+            <EncabezadoTarjeta titulo="Foto" />
+            <div className="p-6">
+              <FotoUsuario
+                id={usuario.id}
+                url={foto}
+                texto={usuario.full_name || usuario.email}
+                editable={puedeEditar || esPropia}
+              />
+            </div>
+          </Tarjeta>
+
           <Tarjeta>
             <EncabezadoTarjeta titulo="Actividad" />
             <dl className="divide-y divide-slate-100 text-sm">

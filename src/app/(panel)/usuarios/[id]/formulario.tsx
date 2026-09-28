@@ -22,6 +22,7 @@ export function FormularioEditarUsuario({
   const val = estado?.valores ?? {
     full_name: usuario.full_name,
     email: usuario.email,
+    username: usuario.username ?? "",
     phone: usuario.phone ?? "",
     role_id: usuario.role_id ?? "",
   };
@@ -45,10 +46,20 @@ export function FormularioEditarUsuario({
         <Campo etiqueta="Correo electrónico" htmlFor="email" error={err.email} ayuda="Si lo cambias, ingresará con el nuevo.">
           <input id="email" name="email" type="email" required defaultValue={val.email} className="entrada" />
         </Campo>
+        <Campo etiqueta="Usuario" htmlFor="username" error={err.username} ayuda="Para ingresar sin correo.">
+          <input
+            id="username"
+            name="username"
+            defaultValue={val.username}
+            autoCapitalize="none"
+            spellCheck={false}
+            className="entrada"
+          />
+        </Campo>
         <Campo etiqueta="Teléfono" htmlFor="phone" error={err.phone}>
           <input id="phone" name="phone" type="tel" defaultValue={val.phone} className="entrada" />
         </Campo>
-        <Campo etiqueta="Rol" htmlFor="role_id" error={err.role_id} className="sm:col-span-2">
+        <Campo etiqueta="Rol" htmlFor="role_id" error={err.role_id}>
           <select id="role_id" name="role_id" required defaultValue={val.role_id} className="entrada">
             <option value="" disabled>
               Sin rol — elige uno…

@@ -15,8 +15,11 @@ export interface RolResumen {
 export interface Sesion {
   id: string;
   email: string;
+  usuario: string | null;
   nombre: string;
   telefono: string | null;
+  /** Ruta de la foto en Storage (no es una URL: ver lib/fotos.ts). */
+  fotoPath: string | null;
   rol: RolResumen | null;
   activo: boolean;
   debeCambiarClave: boolean;
@@ -41,7 +44,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
   const [{ data: perfil }, { data: permisos }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("email, full_name, phone, active, must_change_password, rol:roles(id, key, name, is_system)")
+      .select("email, username, full_name, phone, avatar_path, active, must_change_password, rol:roles(id, key, name, is_system)")
       .eq("id", user.id)
       .maybeSingle(),
     supabase.rpc("my_permissions"),
@@ -53,8 +56,10 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
   return {
     id: user.id,
     email: perfil?.email ?? user.email ?? "",
+    usuario: perfil?.username ?? null,
     nombre: perfil?.full_name || user.email || "",
     telefono: perfil?.phone ?? null,
+    fotoPath: perfil?.avatar_path ?? null,
     rol,
     activo,
     debeCambiarClave: perfil?.must_change_password ?? false,

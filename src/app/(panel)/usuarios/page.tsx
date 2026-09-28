@@ -5,6 +5,7 @@ import { ChevronRight, Search, UserPlus, Users } from "lucide-react";
 import { Fecha } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, Avatar, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, Tarjeta, claseBoton } from "@/components/ui";
+import { urlsFotos } from "@/lib/fotos";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { estadoUsuario, listarRolesOpciones, listarUsuarios } from "@/lib/usuarios";
 import { plural } from "@/lib/utilidades";
@@ -19,10 +20,11 @@ export default async function PaginaUsuarios({ searchParams }: { searchParams: P
 
   const { q = "", rol = "", estado = "", aviso } = await searchParams;
   const [usuarios, roles] = await Promise.all([listarUsuarios(), listarRolesOpciones()]);
+  const fotos = await urlsFotos(usuarios.map((u) => u.avatar_path));
 
   const texto = q.trim().toLowerCase();
   const filtrados = usuarios.filter((u) => {
-    if (texto && !`${u.full_name} ${u.email} ${u.phone ?? ""}`.toLowerCase().includes(texto)) return false;
+    if (texto && !`${u.full_name} ${u.email} ${u.username ?? ""} ${u.phone ?? ""}`.toLowerCase().includes(texto)) return false;
     if (rol === "sin-rol" ? u.role_id !== null : rol && u.role_id !== rol) return false;
     if (estado === "activos" && !u.active) return false;
     if (estado === "inactivos" && u.active) return false;
@@ -67,7 +69,7 @@ export default async function PaginaUsuarios({ searchParams }: { searchParams: P
             <input
               name="q"
               defaultValue={q}
-              placeholder="Buscar por nombre, correo o teléfono"
+              placeholder="Buscar por nombre, usuario, correo o teléfono"
               aria-label="Buscar"
               className="entrada pl-10"
             />
@@ -126,13 +128,16 @@ export default async function PaginaUsuarios({ searchParams }: { searchParams: P
                       <tr key={u.id} className="group transition-colors hover:bg-menta-50/70">
                         <td className="px-5 py-3.5">
                           <Link href={`/usuarios/${u.id}`} className="flex items-center gap-3">
-                            <Avatar texto={u.full_name || u.email} />
+                            <Avatar texto={u.full_name || u.email} src={u.avatar_path ? fotos[u.avatar_path] : null} />
                             <span className="min-w-0">
                               <span className="block truncate font-semibold text-slate-900 group-hover:text-marca-700">
                                 {u.full_name || "Sin nombre"}
                                 {u.id === sesion.id && <span className="ml-2 text-xs font-medium text-slate-400">(tú)</span>}
                               </span>
-                              <span className="block truncate text-slate-500">{u.email}</span>
+                              <span className="block truncate text-slate-500">
+                                {u.username && <span className="font-medium text-slate-600">@{u.username} · </span>}
+                                {u.email}
+                              </span>
                             </span>
                           </Link>
                         </td>
@@ -177,7 +182,7 @@ export default async function PaginaUsuarios({ searchParams }: { searchParams: P
                 return (
                   <li key={u.id}>
                     <Link href={`/usuarios/${u.id}`} className="flex items-center gap-3 px-4 py-3.5 active:bg-menta-50">
-                      <Avatar texto={u.full_name || u.email} />
+                      <Avatar texto={u.full_name || u.email} src={u.avatar_path ? fotos[u.avatar_path] : null} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-slate-900">{u.full_name || "Sin nombre"}</p>
                         <p className="truncate text-sm text-slate-500">{u.email}</p>

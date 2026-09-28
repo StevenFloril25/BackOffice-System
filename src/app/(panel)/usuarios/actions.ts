@@ -6,7 +6,8 @@ import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
 import { validarClaveNueva } from "@/lib/claves";
-import { validarPermiso, type Sesion } from "@/lib/sesion";
+import { borrarFoto, subirFoto } from "@/lib/fotos";
+import { obtenerSesion, validarPermiso, type Sesion } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generarClaveTemporal } from "@/lib/utilidades";
 
@@ -18,6 +19,7 @@ export interface EstadoAccion {
   clave?: string;
   id?: string;
   email?: string;
+  usuario?: string;
   /** Lo que se escribió, para no perderlo cuando la validación falla
    *  (React 19 reinicia el formulario después de cada acción). */
   valores?: Record<string, string>;
@@ -37,11 +39,19 @@ const esquemaDatos = z.object({
     .optional()
     .transform((v) => v || null),
   role_id: z.string().min(1, "Elige un rol.").pipe(z.uuid("Rol no válido.")),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((v) => v === "" || /^[a-z0-9][a-z0-9._-]{2,29}$/.test(v), {
+      message: "De 3 a 30 caracteres: letras, números, punto, guion o guion bajo, sin espacios.",
+    })
+    .transform((v) => v || null),
 });
 
 function valoresDe(formData: FormData) {
   const v: Record<string, string> = {};
-  for (const k of ["full_name", "email", "phone", "role_id"]) v[k] = String(formData.get(k) ?? "");
+  for (const k of ["full_name", "email", "phone", "role_id", "username"]) v[k] = String(formData.get(k) ?? "");
   return v;
 }
 
@@ -90,6 +100,23 @@ async function adminsActivos(): Promise<number> {
   return count ?? 0;
 }
 
+/** Usuario libre a partir del correo: "maria.perez@x.com" -> "maria.perez" (o "maria.perez2"...). */
+async function usuarioSugerido(email: string): Promise<string> {
+  let base = email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "").replace(/^[^a-z0-9]+/, "");
+  if (base.length < 3) base = `${base}usr`;
+  base = base.slice(0, 26);
+  const { data } = await createAdminClient().from("profiles").select("username").ilike("username", `${base}%`);
+  const usados = new Set((data ?? []).map((x) => x.username as string));
+  if (!usados.has(base)) return base;
+  let n = 2;
+  while (usados.has(`${base}${n}`)) n++;
+  return `${base}${n}`;
+}
+
+function esUsuarioDuplicado(message: string) {
+  return /profiles_username_unico/.test(message);
+}
+
 function mensajeAuth(message: string) {
   if (/already been registered|already exists|email_exists/i.test(message)) return "Ya existe una cuenta con ese correo.";
   if (/password/i.test(message)) return "La contraseña no cumple los requisitos de seguridad.";
@@ -108,6 +135,7 @@ export async function crearUsuario(_previo: EstadoAccion | undefined, formData: 
     email: formData.get("email"),
     phone: formData.get("phone") ?? "",
     role_id: formData.get("role_id"),
+    username: formData.get("username") ?? "",
   });
   const valores = valoresDe(formData);
   if (!datos.success) return { errores: erroresDe(datos.error), valores };
@@ -117,6 +145,7 @@ export async function crearUsuario(_previo: EstadoAccion | undefined, formData: 
   if (rol.is_system && !sesion.esAdmin) {
     return { errores: { role_id: "Solo un administrador puede crear administradores." }, valores };
   }
+  const username = datos.data.username ?? (await usuarioSugerido(datos.data.email));
 
   const modo = formData.get("modo_clave") === "manual" ? "manual" : "generada";
   const clave = modo === "manual" ? String(formData.get("clave") ?? "") : generarClaveTemporal();
@@ -143,6 +172,7 @@ export async function crearUsuario(_previo: EstadoAccion | undefined, formData: 
     .update({
       full_name: datos.data.full_name,
       phone: datos.data.phone,
+      username,
       role_id: rol.id,
       must_change_password: pedirCambio,
       created_by: sesion.id,
@@ -150,6 +180,9 @@ export async function crearUsuario(_previo: EstadoAccion | undefined, formData: 
     .eq("id", data.user.id);
   if (errorPerfil) {
     await admin.auth.admin.deleteUser(data.user.id);
+    if (esUsuarioDuplicado(errorPerfil.message)) {
+      return { errores: { username: "Ese usuario ya está en uso." }, valores };
+    }
     return { error: "No se pudo asignar el rol; la cuenta no se creó. Intenta de nuevo.", valores };
   }
 
@@ -166,6 +199,7 @@ export async function crearUsuario(_previo: EstadoAccion | undefined, formData: 
     ok: "Cuenta creada.",
     id: data.user.id,
     email: datos.data.email,
+    usuario: username,
     // Solo se devuelve si la generó el sistema: si la escribió quien crea, ya la conoce.
     clave: modo === "generada" ? clave : undefined,
   };
@@ -189,6 +223,7 @@ export async function actualizarUsuario(
     email: formData.get("email"),
     phone: formData.get("phone") ?? "",
     role_id: formData.get("role_id"),
+    username: formData.get("username") ?? "",
   });
   const valores = valoresDe(formData);
   if (!datos.success) return { errores: erroresDe(datos.error), valores };
@@ -212,10 +247,12 @@ export async function actualizarUsuario(
       full_name: datos.data.full_name,
       email: datos.data.email,
       phone: datos.data.phone,
+      username: datos.data.username,
       role_id: rol.id,
     })
     .eq("id", id);
   if (error) {
+    if (esUsuarioDuplicado(error.message)) return { errores: { username: "Ese usuario ya está en uso." }, valores };
     if (/al menos un administrador/.test(error.message)) {
       return { errores: { role_id: "Es el último administrador activo: no se le puede quitar el rol." }, valores };
     }
@@ -314,8 +351,12 @@ export async function eliminarUsuario(id: string): Promise<EstadoAccion> {
     return { error: "Es el último administrador activo: no se puede eliminar." };
   }
 
-  const { error } = await createAdminClient().auth.admin.deleteUser(id);
+  const admin = createAdminClient();
+  const { data: perfil } = await admin.from("profiles").select("avatar_path").eq("id", id).maybeSingle();
+  const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return { error: "No se pudo eliminar la cuenta." };
+  // Borrar la cuenta no borra sus archivos en Storage.
+  await borrarFoto(perfil?.avatar_path);
 
   await registrarAuditoria(sesion, {
     accion: "usuario.eliminar",
@@ -327,4 +368,65 @@ export async function eliminarUsuario(id: string): Promise<EstadoAccion> {
 
   revalidatePath("/usuarios");
   redirect("/usuarios?aviso=eliminado");
+}
+
+// ---------------------------------------------------------------------------
+// Foto de perfil
+// ---------------------------------------------------------------------------
+
+/**
+ * La foto propia la cambia cualquiera; la de otra persona exige usuarios.editar
+ * y las mismas reglas que el resto de la ficha (un admin solo lo toca otro admin).
+ */
+async function autorizarFoto(
+  id: string,
+): Promise<{ sesion: Sesion; path: string | null; email: string } | { error: string }> {
+  const sesion = await obtenerSesion();
+  if (!sesion?.activo) return { error: "Tu sesión expiró. Vuelve a ingresar." };
+  if (id !== sesion.id) {
+    const permiso = await validarPermiso("usuarios.editar");
+    if (!permiso.ok) return { error: permiso.error };
+    const v = await validarObjetivo(sesion, id);
+    if ("error" in v) return { error: v.error ?? "No permitido." };
+  }
+  const { data } = await createAdminClient().from("profiles").select("avatar_path, email").eq("id", id).maybeSingle();
+  if (!data) return { error: "El usuario no existe." };
+  return { sesion, path: data.avatar_path, email: data.email };
+}
+
+export async function subirFotoUsuario(id: string, datos: FormData): Promise<EstadoAccion> {
+  const a = await autorizarFoto(id);
+  if ("error" in a) return { error: a.error };
+
+  const subida = await subirFoto("usuarios", id, datos.get("foto"));
+  if ("error" in subida) return { error: subida.error };
+
+  const { error } = await createAdminClient().from("profiles").update({ avatar_path: subida.path }).eq("id", id);
+  if (error) {
+    await borrarFoto(subida.path);
+    return { error: "No se pudo guardar la foto." };
+  }
+  await borrarFoto(a.path);
+  await registrarAuditoria(a.sesion, {
+    accion: "usuario.foto",
+    entidad: "usuario",
+    entidadId: id,
+    resumen: id === a.sesion.id ? `${a.email} cambió su foto` : `Cambió la foto de ${a.email}`,
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: "Foto actualizada." };
+}
+
+export async function quitarFotoUsuario(id: string): Promise<EstadoAccion> {
+  const a = await autorizarFoto(id);
+  if ("error" in a) return { error: a.error };
+  if (!a.path) return { ok: "No tenía foto." };
+
+  const { error } = await createAdminClient().from("profiles").update({ avatar_path: null }).eq("id", id);
+  if (error) return { error: "No se pudo quitar la foto." };
+  await borrarFoto(a.path);
+
+  revalidatePath("/", "layout");
+  return { ok: "Foto quitada." };
 }

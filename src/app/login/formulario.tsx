@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { useActionState } from "react";
 
 import { BotonEnviar, EntradaClave } from "@/components/cliente";
@@ -16,18 +16,20 @@ export function FormularioLogin({ aviso, volver }: { aviso?: string; volver?: st
 
       <input type="hidden" name="volver" value={volver ?? ""} />
 
-      <Campo etiqueta="Correo electrónico" htmlFor="email">
+      <Campo etiqueta="Correo o usuario" htmlFor="identificador">
         <div className="relative">
-          <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+          <UserRound className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
           <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
+            id="identificador"
+            name="identificador"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             required
             autoFocus
-            defaultValue={estado?.email}
-            placeholder="nombre@correo.com"
+            defaultValue={estado?.identificador}
+            placeholder="nombre@correo.com o tu usuario"
             className="entrada pl-10"
           />
         </div>

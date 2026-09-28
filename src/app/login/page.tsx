@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { History, ShieldCheck, Users } from "lucide-react";
 
+import { MARCA } from "@/lib/marca";
 import { FormularioLogin } from "./formulario";
 
 export const metadata: Metadata = { title: "Ingresar" };
@@ -47,8 +48,8 @@ export default async function PaginaLogin({
               priority
             />
             <div className="leading-tight">
-              <p className="text-sm font-bold tracking-wide">BackOffice</p>
-              <p className="text-xs text-marca-200">Conferencias FSY</p>
+              <p className="text-sm font-bold tracking-wide">{MARCA.nombre}</p>
+              <p className="text-xs text-marca-200">{MARCA.sesion}</p>
             </div>
           </div>
 
@@ -72,7 +73,7 @@ export default async function PaginaLogin({
             </ul>
           </div>
 
-          <p className="text-xs text-marca-200/80">© {new Date().getFullYear()} BackOffice FSY</p>
+          <p className="text-xs text-marca-200/80">© {new Date().getFullYear()} {MARCA.nombre} · {MARCA.sesion}</p>
         </div>
       </section>
 
@@ -88,8 +89,10 @@ export default async function PaginaLogin({
               className="mb-6 size-20 rounded-3xl shadow-tarjeta ring-1 ring-slate-200 lg:hidden"
               priority
             />
-            <h2 className="text-2xl font-bold tracking-tight text-marca-950">Bienvenido de nuevo</h2>
-            <p className="mt-1.5 text-sm text-slate-500">Ingresa con la cuenta que te asignó el administrador.</p>
+            <h2 className="text-2xl font-bold tracking-tight text-marca-950">Bienvenido al FSY</h2>
+            <p className="mt-1.5 text-sm text-slate-500">
+              {MARCA.nombre} · {MARCA.sesion}. Ingresa con tu correo o tu usuario.
+            </p>
           </div>
 
           <FormularioLogin aviso={aviso} volver={volver} />
