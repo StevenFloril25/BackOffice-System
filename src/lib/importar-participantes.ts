@@ -123,6 +123,14 @@ function estado(t: string): EstadoInscripcion {
   return ESTADOS_INSCRIPCION.find((e) => normalizar(e) === n) ?? "Pendiente de aprobación";
 }
 
+/**
+ * El sistema de inscripción exporta los barrios en inglés ("Eden Ward",
+ * "Pedernales Branch"); aquí se guardan solo con su nombre. Ver 0006.
+ */
+export function nombreBarrio(nombre: string): string {
+  return nombre.replace(/\s+(ward|branch)\s*$/i, "").trim();
+}
+
 function masFrecuente(valores: string[]): string {
   const c = new Map<string, number>();
   for (const v of valores) if (v) c.set(v, (c.get(v) ?? 0) + 1);
@@ -182,6 +190,7 @@ export async function importarParticipantes(archivo: Blob): Promise<ResumenImpor
       resumen.omitidas.push({ fila: numero, motivo: "Sin barrio" });
       return;
     }
+    r.barrio = nombreBarrio(r.barrio);
     r._clave = claveParticipante(r.nombres, r.apellidos, r.fecha_nacimiento);
     const previa = porClave.get(r._clave);
     if (previa) {
@@ -201,7 +210,7 @@ export async function importarParticipantes(archivo: Blob): Promise<ResumenImpor
 
   // --- Barrios -------------------------------------------------------------
   const { data: existentes } = await admin.from("barrios").select("id, estaca, nombre, obispo_nombre, obispo_correo");
-  const claveBarrio = (estaca: string, nombre: string) => `${normalizar(estaca)}|${normalizar(nombre)}`;
+  const claveBarrio = (estaca: string, nombre: string) => `${normalizar(estaca)}|${normalizar(nombreBarrio(nombre))}`;
   const barrioId = new Map<string, string>();
   for (const b of existentes ?? []) barrioId.set(claveBarrio(b.estaca, b.nombre), b.id);
 
