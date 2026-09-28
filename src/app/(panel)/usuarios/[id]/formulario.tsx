@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 
-import { BotonEnviar } from "@/components/cliente";
-import { Alerta, Campo } from "@/components/ui";
+import { BotonEnviar, ResultadoEnvio } from "@/components/cliente";
+import { Campo } from "@/components/ui";
 import type { RolOpcion, UsuarioFila } from "@/lib/usuarios";
 import { actualizarUsuario } from "../actions";
 
@@ -30,16 +30,6 @@ export function FormularioEditarUsuario({
   return (
     <form action={accion}>
       <fieldset disabled={!editable} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
-        {estado?.error && (
-          <div className="sm:col-span-2">
-            <Alerta tipo="error">{estado.error}</Alerta>
-          </div>
-        )}
-        {estado?.ok && (
-          <div className="sm:col-span-2">
-            <Alerta tipo="exito">{estado.ok}</Alerta>
-          </div>
-        )}
         <Campo etiqueta="Nombre completo" htmlFor="full_name" error={err.full_name} className="sm:col-span-2">
           <input id="full_name" name="full_name" required defaultValue={val.full_name} className="entrada" />
         </Campo>
@@ -73,8 +63,11 @@ export function FormularioEditarUsuario({
         </Campo>
       </fieldset>
       {editable && (
-        <div className="flex justify-end border-t border-slate-100 px-5 py-4 sm:px-6">
-          <BotonEnviar pendiente="Guardando…">Guardar cambios</BotonEnviar>
+        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          <ResultadoEnvio estado={estado} />
+          <BotonEnviar pendiente="Guardando…" className="shrink-0">
+            Guardar cambios
+          </BotonEnviar>
         </div>
       )}
     </form>

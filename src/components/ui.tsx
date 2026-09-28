@@ -75,7 +75,7 @@ export function Campo({
   className?: string;
 }) {
   return (
-    <div className={clsx("space-y-1.5", className)}>
+    <div className={clsx("space-y-1.5", className)} data-error={error ? "" : undefined}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
         {etiqueta}
       </label>

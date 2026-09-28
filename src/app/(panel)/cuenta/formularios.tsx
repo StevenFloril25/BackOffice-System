@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 
-import { BotonEnviar, EntradaClave } from "@/components/cliente";
-import { Alerta, Campo } from "@/components/ui";
+import { BotonEnviar, EntradaClave, ResultadoEnvio } from "@/components/cliente";
+import { Campo } from "@/components/ui";
 import { cambiarClave, guardarPerfil } from "./actions";
 
 export function FormularioPerfil({ nombre, telefono }: { nombre: string; telefono: string }) {
@@ -11,16 +11,6 @@ export function FormularioPerfil({ nombre, telefono }: { nombre: string; telefon
   return (
     <form action={accion}>
       <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
-        {estado?.error && (
-          <div className="sm:col-span-2">
-            <Alerta tipo="error">{estado.error}</Alerta>
-          </div>
-        )}
-        {estado?.ok && (
-          <div className="sm:col-span-2">
-            <Alerta tipo="exito">{estado.ok}</Alerta>
-          </div>
-        )}
         <Campo etiqueta="Nombre completo" htmlFor="full_name">
           <input id="full_name" name="full_name" required defaultValue={nombre} className="entrada" />
         </Campo>
@@ -28,8 +18,9 @@ export function FormularioPerfil({ nombre, telefono }: { nombre: string; telefon
           <input id="phone" name="phone" type="tel" defaultValue={telefono} className="entrada" />
         </Campo>
       </div>
-      <div className="flex justify-end border-t border-slate-100 px-5 py-4 sm:px-6">
-        <BotonEnviar pendiente="Guardando…">Guardar</BotonEnviar>
+      <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+        <ResultadoEnvio estado={estado} />
+        <BotonEnviar className="shrink-0" pendiente="Guardando…">Guardar</BotonEnviar>
       </div>
     </form>
   );
@@ -40,16 +31,6 @@ export function FormularioClave() {
   return (
     <form action={accion}>
       <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
-        {estado?.error && (
-          <div className="sm:col-span-2">
-            <Alerta tipo="error">{estado.error}</Alerta>
-          </div>
-        )}
-        {estado?.ok && (
-          <div className="sm:col-span-2">
-            <Alerta tipo="exito">{estado.ok}</Alerta>
-          </div>
-        )}
         <Campo etiqueta="Contraseña actual" htmlFor="actual" className="sm:col-span-2">
           <EntradaClave id="actual" name="actual" autoComplete="current-password" required />
         </Campo>
@@ -60,8 +41,9 @@ export function FormularioClave() {
           <EntradaClave id="repetida" name="repetida" autoComplete="new-password" required minLength={8} />
         </Campo>
       </div>
-      <div className="flex justify-end border-t border-slate-100 px-5 py-4 sm:px-6">
-        <BotonEnviar pendiente="Cambiando…">Cambiar contraseña</BotonEnviar>
+      <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+        <ResultadoEnvio estado={estado} />
+        <BotonEnviar className="shrink-0" pendiente="Cambiando…">Cambiar contraseña</BotonEnviar>
       </div>
     </form>
   );

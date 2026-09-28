@@ -114,6 +114,9 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
         return;
       }
       escaner.current?.destroy();
+      // Si en algún intento anterior el video estuvo oculto, qr-scanner le dejó
+      // ancho y alto 0 en línea (su arreglo para Safari) y se vería solo el fondo.
+      video.current.removeAttribute("style");
       const s = new QrScanner(video.current, (r) => procesar(r.data), {
         preferredCamera: "environment",
         highlightScanRegion: true,
@@ -124,8 +127,10 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
       escaner.current = s as unknown as Escaner;
       await s.start();
       setCamaraActiva(true);
-      const lista = await QrScanner.listCameras(true);
-      setCamaras(lista.map((c) => ({ id: c.id, label: c.label || "Cámara" })));
+      // Sin pedir etiquetas: con el permiso ya concedido vienen igual, y pedirlas
+      // abre un segundo flujo que en iPhone corta el de la vista previa.
+      const lista = await QrScanner.listCameras();
+      setCamaras(lista.map((c, i) => ({ id: c.id, label: c.label || `Cámara ${i + 1}` })));
     } catch (e) {
       const texto = String(e);
       setErrorCamara(
@@ -198,9 +203,12 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
 
         <Tarjeta className="overflow-hidden">
           <div className="relative aspect-square bg-marca-950 sm:aspect-[4/3]">
-            <video ref={video} className={clsx("h-full w-full object-cover", !camaraActiva && "invisible")} muted playsInline />
+            {/* El video nunca se oculta: si qr-scanner lo encuentra oculto al arrancar, lo
+                deja en 0×0 para que Safari no pause la reproducción y la vista queda en azul.
+                La portada de "Encender cámara" va encima. */}
+            <video ref={video} className="absolute inset-0 h-full w-full object-cover" autoPlay muted playsInline disablePictureInPicture />
             {!camaraActiva && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center text-white">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-marca-950 px-6 text-center text-white">
                 <span className="flex size-16 items-center justify-center rounded-2xl bg-white/10">
                   {errorCamara ? <CameraOff className="size-8 text-sol-200" /> : <Camera className="size-8 text-sol-200" />}
                 </span>
@@ -214,7 +222,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
               </div>
             )}
             {procesando && (
-              <div className="absolute inset-x-0 top-0 flex justify-center p-3">
+              <div className="absolute inset-x-0 top-0 z-20 flex justify-center p-3">
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-marca-800 shadow">
                   <Loader2 className="size-3.5 animate-spin" /> Verificando…
                 </span>
@@ -226,7 +234,7 @@ export function LectorAsistencia({ personas: iniciales_ }: { personas: Persona[]
               {camaras.length > 1 && (
                 <select
                   aria-label="Cámara"
-                  className="entrada w-auto flex-1 py-1.5 text-sm"
+                  className="entrada w-auto flex-1 py-1.5"
                   onChange={(e) => escaner.current?.setCamera(e.target.value)}
                 >
                   {camaras.map((c) => (

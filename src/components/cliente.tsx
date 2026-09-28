@@ -5,7 +5,7 @@ import { Check, Copy, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 
-import { claseBoton } from "@/components/ui";
+import { Alerta, claseBoton } from "@/components/ui";
 
 /** Botón de envío que se bloquea y muestra carga mientras la acción corre. */
 export function BotonEnviar({
@@ -32,6 +32,52 @@ export function BotonEnviar({
       {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
       {pending ? (pendiente ?? children) : children}
     </button>
+  );
+}
+
+/**
+ * Resultado de un formulario, para ponerlo junto a su botón de envío.
+ *
+ * En el celular un formulario largo se envía desde el final: un aviso arriba queda
+ * fuera de la pantalla y parece que "Guardar" no hizo nada. Por eso el aviso va
+ * aquí y, si hay errores, la vista baja o sube al primer campo marcado.
+ */
+export function ResultadoEnvio({
+  estado,
+}: {
+  estado?: { ok?: string; error?: string; errores?: Record<string, string> };
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const campos = Object.keys(estado?.errores ?? {});
+
+  useEffect(() => {
+    const aviso = ref.current;
+    if (!estado || !aviso) return;
+    const conError = new Set(Object.keys(estado.errores ?? {}));
+    const form = aviso.closest("form");
+    const primero = form && [...form.elements].find((e) => conError.has((e as HTMLInputElement).name));
+    if (primero instanceof HTMLElement) {
+      primero.scrollIntoView({ behavior: "smooth", block: "center" });
+      primero.focus({ preventScroll: true });
+    } else {
+      aviso.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [estado]);
+
+  return (
+    <div ref={ref} className="empty:hidden">
+      {estado?.error ? (
+        <Alerta tipo="error">{estado.error}</Alerta>
+      ) : campos.length > 0 ? (
+        <Alerta tipo="error">
+          {campos.length === 1
+            ? "Hay un dato por corregir. Está marcado en rojo más arriba."
+            : `Hay ${campos.length} datos por corregir. Están marcados en rojo más arriba.`}
+        </Alerta>
+      ) : estado?.ok ? (
+        <Alerta tipo="exito">{estado.ok}</Alerta>
+      ) : null}
+    </div>
   );
 }
 

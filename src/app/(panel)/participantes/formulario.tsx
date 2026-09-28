@@ -3,8 +3,8 @@
 import { HeartPulse, Plus } from "lucide-react";
 import { useActionState, useMemo, useState } from "react";
 
-import { BotonEnviar } from "@/components/cliente";
-import { Alerta, Campo, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
+import { BotonEnviar, ResultadoEnvio } from "@/components/cliente";
+import { Campo, EncabezadoTarjeta, Tarjeta } from "@/components/ui";
 import { CAMPOS_SALUD, TALLAS, type BarrioResumen } from "@/lib/participantes-comun";
 import { DialogoBarrio } from "../barrios/dialogo-barrio";
 import { actualizarParticipante, crearParticipante, type EstadoParticipante } from "./actions";
@@ -39,9 +39,10 @@ export function FormularioParticipante({ id, inicial, barrios: barriosIniciales,
 
   return (
     <>
-      <form action={accion} className="space-y-6">
-        {estado?.error && <Alerta tipo="error">{estado.error}</Alerta>}
-        {estado?.ok && <Alerta tipo="exito">{estado.ok}</Alerta>}
+      {/* noValidate: el servidor valida todo y lo explica junto a cada campo. El globo
+          del navegador frena el envío y en el celular puede quedar fuera de la vista
+          (por ejemplo, un correo mal escrito que vino en el Excel). */}
+      <form action={accion} noValidate className="space-y-6">
 
         <fieldset disabled={!editable} className="space-y-6">
           <Tarjeta>
@@ -189,8 +190,11 @@ export function FormularioParticipante({ id, inicial, barrios: barriosIniciales,
         </fieldset>
 
         {editable && (
-          <div className="flex justify-end">
-            <BotonEnviar pendiente="Guardando…">{id ? "Guardar cambios" : "Registrar participante"}</BotonEnviar>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <ResultadoEnvio estado={estado} />
+            <BotonEnviar pendiente="Guardando…" className="shrink-0">
+              {id ? "Guardar cambios" : "Registrar participante"}
+            </BotonEnviar>
           </div>
         )}
       </form>
