@@ -2,8 +2,8 @@
 
 import clsx from "clsx";
 import { Check, Copy, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
+import { createPortal, useFormStatus } from "react-dom";
 
 import { claseBoton } from "@/components/ui";
 
@@ -110,9 +110,15 @@ function haceCuanto(d: Date) {
   return d.toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+const sinSuscripcion = () => () => {};
+
 /**
  * Diálogo modal nativo (<dialog>): foco atrapado, Esc para cerrar y fondo
  * inerte sin librerías.
+ *
+ * Se dibuja en un portal sobre <body>: así un diálogo con su propio formulario
+ * puede abrirse desde dentro de otro formulario (un <form> anidado en otro es
+ * HTML inválido y el interno terminaría enviando el externo).
  */
 export function Dialogo({
   abierto,
@@ -130,15 +136,17 @@ export function Dialogo({
   ancho?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const enCliente = useSyncExternalStore(sinSuscripcion, () => true, () => false);
 
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (abierto && !d.open) d.showModal();
     if (!abierto && d.open) d.close();
-  }, [abierto]);
+  }, [abierto, enCliente]);
 
-  return (
+  if (!enCliente) return null;
+  return createPortal(
     <dialog
       ref={ref}
       onClose={alCerrar}
@@ -157,6 +165,7 @@ export function Dialogo({
           <div className="mt-5">{children}</div>
         </div>
       )}
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }

@@ -23,6 +23,13 @@ export const MENU: SeccionMenu[] = [
     items: [{ href: "/inicio", etiqueta: "Inicio", icono: "inicio" }],
   },
   {
+    titulo: "Conferencia",
+    items: [
+      { href: "/participantes", etiqueta: "Participantes", icono: "id-card", permiso: "participantes.ver" },
+      { href: "/barrios", etiqueta: "Barrios", icono: "church", permiso: "barrios.ver" },
+    ],
+  },
+  {
     titulo: "Administración",
     items: [
       { href: "/usuarios", etiqueta: "Usuarios", icono: "users", permiso: "usuarios.ver" },

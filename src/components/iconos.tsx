@@ -1,5 +1,8 @@
 import {
+  Church,
   History,
+  IdCard,
+  ScanLine,
   LayoutDashboard,
   ShieldCheck,
   Square,
@@ -18,6 +21,9 @@ const ICONOS = {
   users: Users,
   "shield-check": ShieldCheck,
   history: History,
+  "id-card": IdCard,
+  "scan-line": ScanLine,
+  church: Church,
 } satisfies Record<string, LucideIcon>;
 
 export type NombreIcono = keyof typeof ICONOS;
