@@ -5,11 +5,13 @@ import { ArrowRight, History, ShieldCheck, UserCheck, UserPlus, Users } from "lu
 import { Fecha } from "@/components/cliente";
 import { Icono } from "@/components/iconos";
 import { Alerta, Avatar, EncabezadoTarjeta, EnlaceBoton, Tarjeta } from "@/components/ui";
+import { cargarAgenda } from "@/lib/agenda-datos";
 import { MENU } from "@/lib/navegacion";
 import { catalogoPermisos, resumenRoles } from "@/lib/roles";
 import { exigirSesion, puede } from "@/lib/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { listarUsuarios } from "@/lib/usuarios";
+import { AhoraEnLaSesion } from "../agenda/cliente";
 
 export const metadata: Metadata = { title: "Inicio" };
 
@@ -20,7 +22,8 @@ export default async function Inicio() {
   const verBitacora = puede(sesion, "auditoria.ver");
 
   const supabase = await createClient();
-  const [usuarios, roles, catalogo, actividad] = await Promise.all([
+  const [agenda, usuarios, roles, catalogo, actividad] = await Promise.all([
+    puede(sesion, "agenda.ver") ? cargarAgenda() : Promise.resolve(null),
     verUsuarios ? listarUsuarios() : Promise.resolve(null),
     verRoles ? resumenRoles() : Promise.resolve(null),
     catalogoPermisos(),
@@ -65,6 +68,9 @@ export default async function Inicio() {
           </p>
         </div>
       </section>
+
+      {/* Durante la sesión: qué toca ahora y qué sigue (solo aparece los días de la sesión). */}
+      {agenda && <AhoraEnLaSesion dias={agenda.dias} actividades={agenda.actividades} enlace />}
 
       {!sesion.rol && (
         <div className="mb-8">

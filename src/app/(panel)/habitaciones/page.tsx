@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
-import { BedDouble, CircleAlert, Printer } from "lucide-react";
+import { BedDouble, CircleAlert, Printer, Wand2 } from "lucide-react";
 
+import { AvisoBreve } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
 import { Alerta, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, Tarjeta, claseBoton } from "@/components/ui";
 import {
@@ -64,11 +65,11 @@ function pisosDe(e: EdificioConHabitaciones, ocupacion: Ocupacion): Piso[] {
   return [...porPiso.values()].sort((a, b) => b.numero - a.numero);
 }
 
-export default async function PaginaHabitaciones({ searchParams }: { searchParams: Promise<{ aviso?: string }> }) {
+export default async function PaginaHabitaciones({ searchParams }: { searchParams: Promise<{ aviso?: string; n?: string }> }) {
   const sesion = await exigirSesion();
   if (!puede(sesion, "habitaciones.ver")) return <SinAcceso permiso="habitaciones.ver" />;
 
-  const { aviso } = await searchParams;
+  const { aviso, n } = await searchParams;
   const [edificios, ocupacion, sinCama, companias, resumen] = await Promise.all([
     listarEdificios(),
     ocupacionPorHabitacion(),
@@ -97,10 +98,20 @@ export default async function PaginaHabitaciones({ searchParams }: { searchParam
               <Printer className="size-4" aria-hidden />
               Imprimir distribución
             </EnlaceBoton>
+            {puede(sesion, "habitaciones.editar") && edificios.length > 0 && (
+              <EnlaceBoton href="/habitaciones/acomodar" variante="secundario">
+                <Wand2 className="size-4" aria-hidden />
+                Acomodar por compañías
+              </EnlaceBoton>
+            )}
             <AccionesHabitaciones puedeCrear={puede(sesion, "habitaciones.crear")} />
           </>
         }
       />
+
+      {aviso === "acomodados" && (
+        <AvisoBreve titulo="Acomodo aplicado" detalle={`${Number(n) || 0} personas con cama asignada.`} quitarDeUrl={["aviso", "n"]} />
+      )}
 
       {aviso === "eliminada" && (
         <div className="mb-6">

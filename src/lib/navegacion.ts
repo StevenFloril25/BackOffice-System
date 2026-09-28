@@ -28,12 +28,14 @@ export const MENU: SeccionMenu[] = [
     titulo: "Conferencia",
     items: [
       { href: "/mi-compania", etiqueta: "Mi compañía", icono: "users-round", permiso: "companias.ver_propia", ocultarAlAdmin: true },
+      { href: "/agenda", etiqueta: "Agenda", icono: "calendar-days", permiso: "agenda.ver" },
       { href: "/participantes", etiqueta: "Participantes", icono: "id-card", permiso: "participantes.ver" },
       { href: "/consejeros", etiqueta: "Consejeros y coordinadores", icono: "heart-handshake", permiso: "consejeros.ver" },
       { href: "/companias", etiqueta: "Compañías", icono: "flag", permiso: "companias.ver" },
       { href: "/habitaciones", etiqueta: "Habitaciones", icono: "bed-double", permiso: "habitaciones.ver" },
       { href: "/asistencia", etiqueta: "Registro de asistencia", icono: "scan-line", permiso: "asistencia.registrar" },
       { href: "/barrios", etiqueta: "Barrios", icono: "church", permiso: "barrios.ver" },
+      { href: "/informe", etiqueta: "Informe final", icono: "file-text", permiso: "informe.ver" },
     ],
   },
   {

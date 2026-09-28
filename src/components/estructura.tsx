@@ -24,9 +24,9 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
   const ruta = usePathname();
 
   return (
-    <div className="min-h-screen lg:pl-72">
+    <div className="min-h-screen lg:pl-72 print:pl-0">
       {/* Barra superior en móvil */}
-      <div className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur lg:hidden print:hidden">
         <button
           type="button"
           onClick={() => setAbierto(true)}
@@ -43,14 +43,14 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
         aria-hidden
         onClick={() => setAbierto(false)}
         className={clsx(
-          "fixed inset-0 z-40 bg-marca-950/40 backdrop-blur-[2px] transition-opacity lg:hidden",
+          "fixed inset-0 z-40 bg-marca-950/40 backdrop-blur-[2px] transition-opacity lg:hidden print:hidden",
           abierto ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-gradient-to-b from-marca-800 via-marca-900 to-marca-950 text-white transition-transform duration-200 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-gradient-to-b from-marca-800 via-marca-900 to-marca-950 text-white transition-transform duration-200 lg:translate-x-0 print:hidden",
           abierto ? "translate-x-0 shadow-flotante" : "-translate-x-full",
         )}
       >
@@ -133,7 +133,7 @@ export function Estructura({ menu, usuario, children }: { menu: SeccionMenu[]; u
         </div>
       </aside>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10">{children}</main>
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10 print:max-w-none print:p-0">{children}</main>
     </div>
   );
 }

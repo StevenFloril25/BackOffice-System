@@ -182,8 +182,8 @@ const TONOS_AVISO = {
  * Para avisos que no piden decidir nada, como "Participante registrado".
  *
  * Aparece al montarse: para mostrarlo otra vez, cambiar su `key`.
- * `quitarDeUrl` borra de la dirección el parámetro que lo hizo aparecer, para que
- * al recargar o volver atrás no salga otra vez.
+ * `quitarDeUrl` borra de la dirección los parámetros que lo hicieron aparecer,
+ * para que al recargar o volver atrás no salga otra vez.
  */
 export function AvisoBreve({
   titulo,
@@ -196,7 +196,7 @@ export function AvisoBreve({
   detalle?: ReactNode;
   tono?: keyof typeof TONOS_AVISO;
   duracion?: number;
-  quitarDeUrl?: string;
+  quitarDeUrl?: string | string[];
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const idTitulo = useId();
@@ -212,13 +212,15 @@ export function AvisoBreve({
     return () => clearTimeout(t);
   }, [abierto, enCliente, duracion]);
 
+  const quitar = [quitarDeUrl ?? []].flat().join(",");
   useEffect(() => {
-    if (!quitarDeUrl) return;
+    if (!quitar) return;
     const url = new URL(window.location.href);
-    if (!url.searchParams.has(quitarDeUrl)) return;
-    url.searchParams.delete(quitarDeUrl);
+    const claves = quitar.split(",").filter((c) => url.searchParams.has(c));
+    if (claves.length === 0) return;
+    for (const c of claves) url.searchParams.delete(c);
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-  }, [quitarDeUrl]);
+  }, [quitar]);
 
   if (!enCliente || !abierto) return null;
   return createPortal(

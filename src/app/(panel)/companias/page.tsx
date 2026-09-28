@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, Flag } from "lucide-react";
+import { ChevronRight, Flag, Wand2 } from "lucide-react";
 
+import { AvisoBreve } from "@/components/cliente";
 import { SinAcceso } from "@/components/sin-acceso";
-import { Alerta, Avatar, EncabezadoPagina, EstadoVacio, Insignia, Tarjeta } from "@/components/ui";
+import { Alerta, Avatar, EncabezadoPagina, EnlaceBoton, EstadoVacio, Insignia, Tarjeta } from "@/components/ui";
 import { urlsFotos } from "@/lib/fotos";
 import { listarCompanias, resumenPorCompania, type ConsejeroResumen } from "@/lib/organizacion";
 import { nombreCompleto } from "@/lib/participantes-comun";
@@ -12,11 +13,11 @@ import { AccionesCompanias } from "./dialogos";
 
 export const metadata: Metadata = { title: "Compañías" };
 
-export default async function PaginaCompanias({ searchParams }: { searchParams: Promise<{ aviso?: string }> }) {
+export default async function PaginaCompanias({ searchParams }: { searchParams: Promise<{ aviso?: string; n?: string }> }) {
   const sesion = await exigirSesion();
   if (!puede(sesion, "companias.ver")) return <SinAcceso permiso="companias.ver" />;
 
-  const { aviso } = await searchParams;
+  const { aviso, n } = await searchParams;
   const [companias, resumen] = await Promise.all([listarCompanias(), resumenPorCompania()]);
   const fotos = await urlsFotos(companias.flatMap((c) => [c.consejero?.foto_path, c.consejera?.foto_path]));
   const conCoordinador = companias.filter((c) => c.coordinadores.length > 0).length;
@@ -29,8 +30,22 @@ export default async function PaginaCompanias({ searchParams }: { searchParams: 
       <EncabezadoPagina
         titulo="Compañías"
         descripcion="Cada compañía tiene un consejero y una consejera y un grupo de jóvenes. Los jóvenes se reparten después, por edades."
-        acciones={puede(sesion, "companias.crear") && <AccionesCompanias siguiente={siguiente} />}
+        acciones={
+          <>
+            {puede(sesion, "companias.editar") && companias.length > 0 && (
+              <EnlaceBoton href="/companias/distribuir" variante="secundario">
+                <Wand2 className="size-4" aria-hidden />
+                Repartir jóvenes
+              </EnlaceBoton>
+            )}
+            {puede(sesion, "companias.crear") && <AccionesCompanias siguiente={siguiente} />}
+          </>
+        }
       />
+
+      {aviso === "repartidos" && (
+        <AvisoBreve titulo="Reparto aplicado" detalle={`${Number(n) || 0} jóvenes asignados a sus compañías.`} quitarDeUrl={["aviso", "n"]} />
+      )}
 
       {aviso === "eliminada" && (
         <div className="mb-6">

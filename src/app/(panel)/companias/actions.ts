@@ -5,10 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
+import { leerAlcance, leerModo, propuestaCompanias } from "@/lib/distribucion-datos";
 import { mensajeBd } from "@/lib/errores";
 import { nombreCompania } from "@/lib/organizacion-comun";
 import { validarPermiso } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { erroresDe, leerCampos, textoOpcional } from "@/lib/validacion";
 
 export interface EstadoCompania {
@@ -280,4 +282,39 @@ export async function quitarJoven(companiaId: string, participanteId: string): P
   });
   refrescar(companiaId);
   return { ok: "Quitado de la compañía." };
+}
+
+/**
+ * Aplica el reparto sugerido. Se vuelve a calcular con los datos de ahora y
+ * solo se aplica si sale igual al que se vio: si alguien asignó o registró
+ * jóvenes entretanto, la propuesta ya es otra y hay que mirarla de nuevo.
+ */
+export async function aplicarReparto(modo: string, alcance: string, huella: string): Promise<EstadoCompania> {
+  const permiso = await validarPermiso("companias.editar");
+  if (!permiso.ok) return { error: permiso.error };
+
+  const edades = leerModo(modo);
+  const cuales = leerAlcance(alcance);
+  const { propuesta } = await propuestaCompanias(edades, cuales);
+  if (propuesta.huella !== huella) {
+    revalidatePath("/companias/distribuir");
+    return { error: "Algo cambió mientras mirabas la propuesta (alguien asignó o registró jóvenes). Ya se actualizó: revísala y vuelve a aplicar." };
+  }
+  if (propuesta.asignaciones.length === 0) return { error: "No hay jóvenes para repartir." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("aplicar_companias", {
+    p_asignaciones: propuesta.asignaciones,
+    p_rehacer: cuales === "rehacer",
+  });
+  if (error) return { error: mensajeBd(error, "No se pudo aplicar el reparto. No se cambió nada.") };
+
+  const n = (data as number | null) ?? 0;
+  await registrarAuditoria(permiso.sesion, {
+    accion: "compania.reparto",
+    entidad: "compania",
+    resumen: `Repartió automáticamente ${n} ${n === 1 ? "joven" : "jóvenes"} en ${propuesta.companias.length} compañías (${edades === "agrupar" ? "edades parecidas" : "edades mezcladas"}${cuales === "rehacer" ? ", rehaciendo todas" : ""})`,
+  });
+  refrescar();
+  redirect(`/companias?aviso=repartidos&n=${n}`);
 }

@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { registrarAuditoria } from "@/lib/auditoria";
+import { leerAlcance, propuestaCamas } from "@/lib/distribucion-datos";
 import { mensajeBd } from "@/lib/errores";
 import { validarPermiso } from "@/lib/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { erroresDe, leerCampos, textoOpcional } from "@/lib/validacion";
 
 export interface EstadoHabitacion {
@@ -311,4 +313,38 @@ export async function quitarOcupante(habitacionId: string, tipo: "participante" 
   });
   refrescar(habitacionId);
   return { ok: "Quitado de la habitación." };
+}
+
+/**
+ * Aplica el acomodo sugerido de compañías en pisos, si sigue siendo el que se
+ * vio (ver aplicarReparto en compañías). La base lo aplica todo o nada.
+ */
+export async function aplicarAcomodo(alcance: string, huella: string): Promise<EstadoHabitacion> {
+  const permiso = await validarPermiso("habitaciones.editar");
+  if (!permiso.ok) return { error: permiso.error };
+
+  const cuales = leerAlcance(alcance);
+  const { propuesta } = await propuestaCamas(cuales);
+  if (propuesta.huella !== huella) {
+    revalidatePath("/habitaciones/acomodar");
+    return { error: "Algo cambió mientras mirabas la propuesta (alguien asignó camas o compañías). Ya se actualizó: revísala y vuelve a aplicar." };
+  }
+  if (propuesta.acomodados === 0 && cuales === "faltantes") return { error: "No hay a quién acomodar." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("aplicar_camas", {
+    p_jovenes: propuesta.jovenes,
+    p_lideres: propuesta.lideres,
+    p_rehacer: cuales === "rehacer",
+  });
+  if (error) return { error: mensajeBd(error, "No se pudo aplicar el acomodo. No se cambió nada.") };
+
+  const n = (data as number | null) ?? 0;
+  await registrarAuditoria(permiso.sesion, {
+    accion: "habitacion.acomodo",
+    entidad: "habitacion",
+    resumen: `Acomodó automáticamente ${n} ${n === 1 ? "persona" : "personas"} en las habitaciones${cuales === "rehacer" ? " (rehaciendo todo)" : ""}`,
+  });
+  refrescar();
+  redirect(`/habitaciones?aviso=acomodados&n=${n}`);
 }

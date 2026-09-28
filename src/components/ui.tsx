@@ -268,3 +268,46 @@ export function EstadoVacio({
     </div>
   );
 }
+
+/**
+ * Una opción entre varias que cambia la página por la dirección (?edades=…):
+ * funciona sin JavaScript y la elección queda en el enlace.
+ */
+export function OpcionEnlace({
+  href,
+  activa,
+  titulo,
+  detalle,
+}: {
+  href: string;
+  activa: boolean;
+  titulo: string;
+  detalle?: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      replace
+      scroll={false}
+      aria-current={activa ? "true" : undefined}
+      className={clsx(
+        "flex gap-3 rounded-xl border px-4 py-3 transition",
+        activa ? "border-marca-500 bg-marca-50/70 ring-1 ring-marca-500" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+      )}
+    >
+      <span
+        aria-hidden
+        className={clsx(
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+          activa ? "border-marca-600 bg-marca-600" : "border-slate-300 bg-white",
+        )}
+      >
+        {activa && <span className="size-1.5 rounded-full bg-white" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-slate-900">{titulo}</span>
+        {detalle && <span className="mt-0.5 block text-xs text-slate-500">{detalle}</span>}
+      </span>
+    </Link>
+  );
+}

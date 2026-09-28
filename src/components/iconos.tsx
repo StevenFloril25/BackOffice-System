@@ -1,6 +1,8 @@
 import {
   BedDouble,
+  CalendarDays,
   Church,
+  FileText,
   Flag,
   HeartHandshake,
   History,
@@ -32,6 +34,8 @@ const ICONOS = {
   flag: Flag,
   "bed-double": BedDouble,
   "users-round": UsersRound,
+  "calendar-days": CalendarDays,
+  "file-text": FileText,
 } satisfies Record<string, LucideIcon>;
 
 export type NombreIcono = keyof typeof ICONOS;
