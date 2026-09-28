@@ -144,6 +144,10 @@ export default async function Credenciales({
                         </div>
                       )}
                       <p className="text-[11pt] leading-tight font-extrabold text-[#012a42]">{nombre}</p>
+                      {/* Con nombre preferido ("Paco"), el completo evita confusiones al repartirlas. */}
+                      {nombre !== nombreCompleto(p) && (
+                        <p className="text-[7pt] leading-tight text-slate-600">{nombreCompleto(p)}</p>
+                      )}
                       <p className="mt-[1mm] text-[8pt] leading-tight text-slate-600">{p.barrio?.nombre}</p>
                       <p className="text-[7pt] leading-tight text-slate-500">{p.barrio?.estaca}</p>
                     </div>
