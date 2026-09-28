@@ -1,0 +1,26 @@
+# dependencias
+/node_modules
+
+# next.js
+/.next/
+/out/
+/build
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# configuración local: nunca se sube (el repo es público)
+.env*
+!.env.local.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# scripts de consulta temporales
+*-tmp.mjs
