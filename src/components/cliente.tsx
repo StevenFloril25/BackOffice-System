@@ -203,7 +203,7 @@ export function AvisoBreve({
       aria-labelledby="aviso-breve-titulo"
       onClose={() => setAbierto(false)}
       onClick={() => ref.current?.close()}
-      className="m-auto w-[calc(100%-2rem)] max-w-xs cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-800 shadow-flotante backdrop:bg-marca-950/40 backdrop:backdrop-blur-[2px]"
+      className="m-auto w-[calc(100%-2rem)] max-w-xs cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-800 shadow-flotante outline-none backdrop:bg-marca-950/40 backdrop:backdrop-blur-[2px]"
     >
       <div className="animar-entrada flex flex-col items-center px-6 pt-7 pb-6 text-center">
         <span className="flex size-14 items-center justify-center rounded-full bg-hoja-100 text-hoja-600">
