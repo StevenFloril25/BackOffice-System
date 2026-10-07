@@ -2,8 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Rutas que se ven sin sesión. Se listan una por una: una ruta nueva no queda
-// pública sin que alguien lo decida.
-const RUTAS_PUBLICAS = ["/login"];
+// pública sin que alguien lo decida. El latido diario se protege con su propio
+// secreto (ver api/mantener-activo).
+const RUTAS_PUBLICAS = ["/login", "/api/mantener-activo"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
